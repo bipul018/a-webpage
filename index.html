@@ -2,6 +2,43 @@
 <html>
   <head> <title> Hello </title> </head>
   <body>
-    Hello everyone.
+    <canvas id="da-canvas" width="300" height="300"></canvas>
+    <script>
+      var c = document.getElementById("da-canvas");
+      var ctx = c.getContext("2d");
+      async function doit(){
+	  function from_zig_str(zig_str, len){
+	      const view = new Uint8Array(
+		  instance.exports.memory.buffer,
+		  zig_str);
+
+	      res_str = '';
+	      var inx = 0;
+	      for(; inx < len; inx +=1 ){
+		  res_str += String.fromCharCode(view[inx]);
+	      }
+	      return res_str;
+	  }
+	  const {instance} =  await
+		WebAssembly.instantiateStreaming(
+		    fetch("base.wasm"),
+		    {
+			"env":{
+			    "fill_text":function(str, lenstr, posx, posy){
+				ctx.fillText(from_zig_str(str, lenstr), posx, posy);
+			    },
+			    "fill_rect":function(px, py, w, h){
+				ctx.fillRect(px, py, w, h);
+			    }
+			}
+		    }
+		);
+	  console.log(instance.exports.init(300, 300));
+      }
+      doit().then(()=>{
+      });
+		    
+	
+    </script>
   </body>
 </html>
