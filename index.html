@@ -5,19 +5,23 @@
     <title> Hello </title>
   </head>
   <body>
-    <canvas id="da-canvas" width="300" height="300"></canvas>
+    <canvas id="da-canvas" width="600" height="600"></canvas>
     <script>
       var c = document.getElementById("da-canvas");
       var ctx = c.getContext("2d");
       async function doit(){
-	  function from_zig_str(zig_str, len){
+	  function from_zig_str(zig_str){
+	      const str = new Uint32Array(
+		  instance.exports.memory.buffer,
+		  zig_str,
+		  2);
 	      const view = new Uint8Array(
 		  instance.exports.memory.buffer,
-		  zig_str);
+		  str[0]);
 
 	      res_str = '';
 	      var inx = 0;
-	      for(; inx < len; inx +=1 ){
+	      for(inx = 0; inx < str[1]; inx +=1 ){
 		  res_str += String.fromCharCode(view[inx]);
 	      }
 	      return res_str;
@@ -27,16 +31,73 @@
 		    fetch("base.wasm"),
 		    {
 			"env":{
-			    "fill_text":function(str, lenstr, posx, posy){
-				ctx.fillText(from_zig_str(str, lenstr), posx, posy);
+			    "crypto_secure_random":function(max_uint32){
+				const array = new Uint32Array(1);
+				self.crypto.getRandomValues(array);
+				return array[0];
+			    },
+			    "log_str":function(str){
+				console.log(from_zig_str(str));
+			    },
+			    "set_font":function(str){
+				ctx.font = from_zig_str(str);
+			    },
+			    "fill_text":function(str, posx, posy){
+				ctx.fillText(from_zig_str(str), posx, posy);
+			    },
+			    "stroke_text":function(str, posx, posy){
+				ctx.strokeText(from_zig_str(str), posx, posy);
 			    },
 			    "fill_rect":function(px, py, w, h){
 				ctx.fillRect(px, py, w, h);
+			    },
+			    "stroke_rect":function(px,py,w,h){
+				ctx.strokeRect(px, py, w, h);
+			    },
+			    "clear_rect":function(px, py, w, h){
+				ctx.clearRect(px, py, w, h);
+			    },
+			    "begin_path":function(){
+				ctx.beginPath();
+			    },
+			    "close_path":function(){
+				ctx.closePath();
 			    }
+			    
 			}
 		    }
 		);
-	  console.log(instance.exports.init(300, 300));
+	  
+	  const cxt = instance.exports.init(600, 600);
+	  function to_c_str(str){
+	      const cstr = instance.exports.get_tmp_str(cxt, str.length);
+	      if(str != 0){
+		  const view = new Uint8Array(
+		      instance.exports.memory.buffer,
+		      cstr);
+
+		  var inx = 0;
+		  for(inx = 0; inx < str.length; inx +=1 ){
+		      view[inx] = str.charCodeAt(inx);
+		  }
+		  view[inx] = 0;
+		  return cstr;
+	      }
+	  }
+	  document.addEventListener("keydown", (event) => {
+	      if (event.isComposing || event.keyCode === 229) {
+		  return;
+	      }
+	      instance.exports.key_event(cxt, to_c_str(event.code));
+	      
+	      // do something
+	  });
+	  function draw(){
+	      instance.exports.loop(cxt);
+	      window.requestAnimationFrame(draw);
+	  }
+	  draw();
+	  //console.log(instance.exports.init(300, 300));
       }
       doit().then(()=>{
       });
