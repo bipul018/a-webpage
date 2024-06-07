@@ -117,7 +117,7 @@
 			  const dy = evt.changedTouches[i].pageY - py;
 			  //If abs is more than a limit, send the command
 			  const rfac = 100;
-			  if(Math.abs(dx) > rfac){
+			  if((Math.abs(dx) > rfac) && (Math.abs(dx) > Math.abs(dy))){
 			      if(dx > 0){
 				  instance.exports.key_event(cxt, to_c_str("ArrowRight"));
 			      }
@@ -125,7 +125,7 @@
 				  instance.exports.key_event(cxt, to_c_str("ArrowLeft"));
 			      }
 			  }
-			  if(Math.abs(dy) > rfac){
+			  if((Math.abs(dy) > rfac) && (Math.abs(dy) > Math.abs(dx))){
 			      
 			      if(dy > 0){
 				  instance.exports.key_event(cxt, to_c_str("ArrowDown"));
