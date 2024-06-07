@@ -2,12 +2,15 @@
 <html>
   <head>
     <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title> Hello </title>
   </head>
   <body>
-    <canvas id="da-canvas" width="600" height="600"></canvas>
+    <canvas id="da-canvas" width="400" height="400"></canvas>
     <script>
       var c = document.getElementById("da-canvas");
+      //c.width=400;
+
       var ctx = c.getContext("2d");
       async function doit(){
 	  function from_zig_str(zig_str){
@@ -39,6 +42,10 @@
 			    "log_str":function(str){
 				console.log(from_zig_str(str));
 			    },
+			    "resize_canvas":function(width, height){
+				c.width = width;
+				c.height = height;
+			    },
 			    "set_font":function(str){
 				ctx.font = from_zig_str(str);
 			    },
@@ -68,7 +75,7 @@
 		    }
 		);
 	  
-	  const cxt = instance.exports.init(600, 600);
+	  const cxt = instance.exports.init(400, 400);
 	  function to_c_str(str){
 	      const cstr = instance.exports.get_tmp_str(cxt, str.length);
 	      if(str != 0){
@@ -92,10 +99,67 @@
 	      
 	      // do something
 	  });
+	  window.addEventListener("resize", (event) => {
+	      instance.exports.resize_event(cxt, window.innerWidth, window.innerHeight);
+	      console.log("wee");
+	  });
+	  c.addEventListener("touchstart", (e) => {
+	      e.preventDefault();
+	      //Add touch end listener that cancels itself
+	      const id = e.changedTouches[0].identifier;
+	      const px = e.changedTouches[0].pageX;
+	      const py = e.changedTouches[0].pageY;
+	      
+	      const endfun = (evt) => {
+		  for(let i = 0; i < evt.changedTouches.length; i++){
+		      if(evt.changedTouches[i].identifier == id){
+			  const dx = evt.changedTouches[i].pageX - px;
+			  const dy = evt.changedTouches[i].pageY - py;
+			  //If abs is more than a limit, send the command
+			  const rfac = 100;
+			  if(Math.abs(dx) > rfac){
+			      if(dx > 0){
+				  instance.exports.key_event(cxt, to_c_str("ArrowRight"));
+			      }
+			      else{
+				  instance.exports.key_event(cxt, to_c_str("ArrowLeft"));
+			      }
+			  }
+			  if(Math.abs(dy) > rfac){
+			      
+			      if(dy > 0){
+				  instance.exports.key_event(cxt, to_c_str("ArrowDown"));
+			      }
+			      else{
+				  instance.exports.key_event(cxt, to_c_str("ArrowUp"));
+			      }
+			  }
+		      }
+		  }
+		  c.removeEventListener("touchend", endfun);
+		  c.removeEventListener("touchcancel", cancelfun);
+		  evt.preventDefault();
+	      };
+	      const cancelfun = (evt) => {
+		  c.removeEventListener("touchend", endfun);
+		  c.removeEventListener("touchcancel", cancelfun);
+		  evt.preventDefault();
+	      };
+	      c.addEventListener("touchcancel", endfun);
+	      c.addEventListener("touchend",endfun);
+	  });
+	  c.addEventListener("touchmove", (e) => {
+	      e.preventDefault();
+	  });
+	  c.addEventListener("touchcancel", (e) => {
+	      e.preventDefault();
+	  });
+
 	  function draw(){
 	      instance.exports.loop(cxt);
 	      window.requestAnimationFrame(draw);
 	  }
+	  instance.exports.resize_event(cxt, window.innerWidth, window.innerHeight);
 	  draw();
 	  //console.log(instance.exports.init(300, 300));
       }
@@ -104,5 +168,8 @@
 		    
 	
     </script>
+    <div id = "infodiv">
+      Made with Zig using WASM
+    </div>
   </body>
 </html>

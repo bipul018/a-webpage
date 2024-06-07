@@ -26,15 +26,16 @@ const ZigStr = extern struct{
         };
     }
 };
-
+extern fn crypto_secure_random(max_val: u32) u32;
 extern fn log_str(str: ZigStr) void;
+extern fn resize_canvas(width: u32, height: u32) void;
 extern fn set_font(std: ZigStr) void;
 extern fn fill_text(str: ZigStr, posx: i32, posy: i32) void;
 extern fn stroke_text(str: ZigStr, posx: i32, posy: i32) void;
 extern fn fill_rect(x: i32, y: i32, wid: i32, hei: i32) void;
 extern fn stroke_rect(x: i32, y: i32, wid: i32, hei: i32) void;
 extern fn clear_rect(x: i32, y: i32, wid: i32, hei: i32) void;
-extern fn crypto_secure_random(max_val: u32) u32;
+
 
 const Pos = struct{
     x: i32,
@@ -127,6 +128,19 @@ export fn key_event(pcxt: ?*Context, cstr: ?[*:0] const u8) void{
     }
 }
 
+export fn resize_event(pcxt: ?*Context, neww2: u32, newh2: u32) void{
+    const newh = @divFloor(newh2 * 9, 10); //Leave off 10% from bottom
+    const neww = @divFloor(neww2 * 95,100); //Leave off some on the right side
+    if(pcxt)|cxt|{
+        //Always make a square board
+        //Try to make space for text at bottom
+        const dim = @min(newh, neww);
+        cxt.w = @intCast(dim);
+        cxt.h = @intCast(dim);
+        resize_canvas(@intCast(cxt.w), @intCast(cxt.h));
+    }
+}
+
 export fn loop(pcxt: ?*Context) void{
     if(pcxt)|cxt|{
         if(cxt.wait > 0){
@@ -191,11 +205,11 @@ export fn loop(pcxt: ?*Context) void{
         }
         draw_box(cxt, cxt.food, true);
 
-        set_font(ZigStr.init("bold 40px serif"));
+        set_font(ZigStr.init("bold 30px serif"));
         
-        stroke_text(ZigStr.init("Welcome"), @divFloor(cxt.w, 2) - 45, @divFloor(cxt.h, 2));
-        stroke_text(ZigStr.init("To"), @divFloor(cxt.w, 2), @divFloor(cxt.h, 2) + 40);
-        stroke_text(ZigStr.init("The Snake Game"), @divFloor(cxt.w, 2)-110, @divFloor(cxt.h, 2) + 80);
+        stroke_text(ZigStr.init("Welcome"), @divFloor(cxt.w, 2) - 60, @divFloor(cxt.h, 2));
+        stroke_text(ZigStr.init("To"), @divFloor(cxt.w, 2)-20, @divFloor(cxt.h, 2) + 40);
+        stroke_text(ZigStr.init("The Snake Game"), @divFloor(cxt.w, 2)-125, @divFloor(cxt.h, 2) + 80);
 
     }
 
