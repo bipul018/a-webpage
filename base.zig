@@ -60,8 +60,8 @@ const Context = struct{
     } = .{.rl=.r},
 };
 
-const nw = 15;
-const nh = 15;
+const nw = 17;
+const nh = 17;
 
 fn initerr(w:i32, h:i32) !*Context{
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -148,7 +148,7 @@ export fn loop(pcxt: ?*Context) void{
             return;
         }
         //Set update rate
-        cxt.wait = 20;
+        cxt.wait = 23;
         //Update
 
         if(cxt.dir == .rl){
