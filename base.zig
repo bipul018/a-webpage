@@ -159,7 +159,7 @@ export fn loop(pcxt: ?*Context) void{
                 cxt.dir = .{.ud = .u};
             }
         }
-        if(cxt.dir == .ud){
+        else if(cxt.dir == .ud){
             if(cxt.key_press.left){
                 cxt.dir = .{.rl = .l};
             }
