@@ -26,7 +26,7 @@ const ZigStr = extern struct{
         };
     }
 };
-extern fn crypto_secure_random(max_val: u32) u32;
+extern fn crypto_secure_random(max_val: u64) u64;
 extern fn log_str(str: ZigStr) void;
 extern fn resize_canvas(width: u32, height: u32) void;
 extern fn set_font(std: ZigStr) void;
@@ -35,7 +35,6 @@ extern fn stroke_text(str: ZigStr, posx: i32, posy: i32) void;
 extern fn fill_rect(x: i32, y: i32, wid: i32, hei: i32) void;
 extern fn stroke_rect(x: i32, y: i32, wid: i32, hei: i32) void;
 extern fn clear_rect(x: i32, y: i32, wid: i32, hei: i32) void;
-
 
 const Pos = struct{
     x: i32,
@@ -58,6 +57,12 @@ const Context = struct{
         rl:enum{l,r},
         ud:enum{u,d},
     } = .{.rl=.r},
+
+    log_buff:std.ArrayList(u8),
+    fn flush_log(self: *Context) void{
+        log_str(ZigStr.init(self.log_buff.items));
+        self.log_buff.clearAndFree();
+    }
 };
 
 const nw = 17;
@@ -71,6 +76,9 @@ fn initerr(w:i32, h:i32) !*Context{
     const cxt = try gpa_allocr.create(Context);
     errdefer gpa_allocr.destroy(cxt);
     cxt.gpa = gpa;
+    cxt.log_buff = std.ArrayList(u8).init(gpa_allocr);
+    errdefer cxt.log_buff.deinit();
+    
     cxt.w = w;
     cxt.h = h;
     cxt.tmp_str = std.ArrayList(u8).init(gpa_allocr);
@@ -78,14 +86,15 @@ fn initerr(w:i32, h:i32) !*Context{
     cxt.wait = 0;
     cxt.snake = std.ArrayList(Pos).init(gpa_allocr);
     errdefer cxt.snake.deinit();
-    // try cxt.snake.append(.{.x = 2,.y = 0});
-    // try cxt.snake.append(.{.x = 1,.y = 0});
+    
     try cxt.snake.append(.{.x = 0,.y = 0});
     cxt.dir = .{.rl = .r};
 
-    cxt.prng = std.rand.DefaultPrng.init(crypto_secure_random((1<<32)-1));
-    cxt.food = .{.x = 3, .y = 3};
-
+    cxt.prng = std.rand.DefaultPrng.init(crypto_secure_random((1<<63)-1));
+    
+    cxt.food.x = @intCast(cxt.prng.random().uintAtMost(u32, nw-1));
+    cxt.food.y = @intCast(cxt.prng.random().uintAtMost(u32, nh-1));
+    
     return cxt;
 }
 
@@ -190,6 +199,8 @@ export fn loop(pcxt: ?*Context) void{
             }
             if(was_food){
                 cxt.snake.append(nhead) catch {};
+                // cxt.log_buff.writer().print("Food generated\n", .{}) catch {};
+                // cxt.flush_log();
                 cxt.food.x = @intCast(cxt.prng.random().uintAtMost(u32, nw-1));
                 cxt.food.y = @intCast(cxt.prng.random().uintAtMost(u32, nh-1));
             }

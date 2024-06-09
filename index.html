@@ -35,9 +35,9 @@
 		    {
 			"env":{
 			    "crypto_secure_random":function(max_uint32){
-				const array = new Uint32Array(1);
-				self.crypto.getRandomValues(array);
-				return array[0];
+				const array = new BigUint64Array(1);
+				crypto.getRandomValues(array);
+				return array[0] % max_uint32;
 			    },
 			    "log_str":function(str){
 				console.log(from_zig_str(str));
@@ -101,7 +101,6 @@
 	  });
 	  window.addEventListener("resize", (event) => {
 	      instance.exports.resize_event(cxt, window.innerWidth, window.innerHeight);
-	      console.log("wee");
 	  });
 	  c.addEventListener("touchstart", (e) => {
 	      e.preventDefault();
