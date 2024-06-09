@@ -237,7 +237,7 @@ fn draw_box(cxt: *Context, pos0: Pos, is_food:bool) void{
 
     
     if(is_food){
-        fill_rect(pos.x + 2*pad, pos.y + 2*pad, clear.x, clear.y);
+        fill_rect(pos.x + pad, pos.y + pad, @max(1,clear.x), @max(1,clear.y));
         // fill_rect(@divFloor(cw,4)+px, @divFloor(ch,4)+py,
         //           @divFloor(cw,2), @divFloor(ch,2));
     }
