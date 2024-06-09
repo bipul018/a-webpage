@@ -215,22 +215,36 @@ export fn loop(pcxt: ?*Context) void{
 
 }
 
-fn draw_box(cxt: *Context, pos: Pos, is_food:bool) void{
-    const cw = @divFloor(cxt.w , nw);
-    const ch = @divFloor(cxt.h , nh);
+fn draw_box(cxt: *Context, pos0: Pos, is_food:bool) void{
+    const cell = Pos{
+        .x = @max(1, @divFloor(cxt.w , nw)),
+        .y = @max(1, @divFloor(cxt.h , nh)),
+    };
+    const pad = 8;
+    const clear = Pos{
+        .x = @max(cell.x - 2 * pad, 0),
+        .y = @max(cell.y - 2 * pad, 0)
+    };
+    const stroke = Pos{
+        .x = @max(clear.x - 2 * pad, 0),
+        .y = @max(clear.y - 2 * pad, 0)
+    };
+
+    const pos = Pos{
+        .x = @divFloor(pos0.x * cxt.w, nw),
+        .y = @divFloor(pos0.y * cxt.h, nh),
+    };
+
     
-    const px = pos.x * cw;
-    const py = pos.y * ch;
     if(is_food){
-        fill_rect(@divFloor(cw,4)+px, @divFloor(ch,4)+py,
-                  @divFloor(cw,2), @divFloor(ch,2));
+        fill_rect(pos.x + 2*pad, pos.y + 2*pad, stroke.x, stroke.y);
+        // fill_rect(@divFloor(cw,4)+px, @divFloor(ch,4)+py,
+        //           @divFloor(cw,2), @divFloor(ch,2));
     }
     else{
         
-        fill_rect(px, py, cw, ch);
-        clear_rect(@divFloor(cw,5)+px, @divFloor(ch,5)+py,
-                   3*@divFloor(cw,5), 3*@divFloor(ch,5));
-        stroke_rect(@divFloor(cw,4)+px, @divFloor(ch,4)+py,
-                    @divFloor(cw,2), @divFloor(ch,2));
+        fill_rect(pos.x, pos.y, cell.x, cell.y);
+        clear_rect(pos.x + pad, pos.y + pad, clear.x, clear.y);
+        stroke_rect(pos.x + 2*pad, pos.y + 2*pad, stroke.x, stroke.y);
     }
 }
