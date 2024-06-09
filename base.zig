@@ -220,7 +220,7 @@ fn draw_box(cxt: *Context, pos0: Pos, is_food:bool) void{
         .x = @max(1, @divFloor(cxt.w , nw)),
         .y = @max(1, @divFloor(cxt.h , nh)),
     };
-    const pad = 8;
+    const pad = 5;
     const clear = Pos{
         .x = @max(cell.x - 2 * pad, 0),
         .y = @max(cell.y - 2 * pad, 0)
@@ -237,7 +237,7 @@ fn draw_box(cxt: *Context, pos0: Pos, is_food:bool) void{
 
     
     if(is_food){
-        fill_rect(pos.x + 2*pad, pos.y + 2*pad, stroke.x, stroke.y);
+        fill_rect(pos.x + 2*pad, pos.y + 2*pad, clear.x, clear.y);
         // fill_rect(@divFloor(cw,4)+px, @divFloor(ch,4)+py,
         //           @divFloor(cw,2), @divFloor(ch,2));
     }
