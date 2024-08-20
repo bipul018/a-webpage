@@ -6,20 +6,31 @@
     <title> Hello </title>
   </head>
   <body>
+    <button id="load_snake"> Snake Game </button>
+    <button id="load_bricks"> Bricks Game </button>
     <canvas id="da-canvas" width="400" height="400"></canvas>
     <script>
       var c = document.getElementById("da-canvas");
       //c.width=400;
 
       var ctx = c.getContext("2d");
-      async function doit(){
+
+      var winst;
+      var w_cxt;
+      var reload = "snake";
+      var wasm_memory = new WebAssembly.Memory({
+	  initial: 20 /* pages */,
+	  //maximum: 100 /* pages */,
+      });
+      async function load_game(){
+
 	  function from_zig_str(zig_str){
 	      const str = new Uint32Array(
-		  instance.exports.memory.buffer,
+		  wasm_memory.buffer,
 		  zig_str,
 		  2);
 	      const view = new Uint8Array(
-		  instance.exports.memory.buffer,
+		  wasm_memory.buffer,
 		  str[0]);
 
 	      res_str = '';
@@ -29,58 +40,67 @@
 	      }
 	      return res_str;
 	  }
-	  const {instance} =  await
-		WebAssembly.instantiateStreaming(
-		    fetch("base.wasm"),
-		    {
-			"env":{
-			    "crypto_secure_random":function(max_uint32){
-				const array = new BigUint64Array(1);
-				crypto.getRandomValues(array);
-				return array[0] % max_uint32;
-			    },
-			    "log_str":function(str){
-				console.log(from_zig_str(str));
-			    },
-			    "resize_canvas":function(width, height){
-				c.width = width;
-				c.height = height;
-			    },
-			    "set_font":function(str){
-				ctx.font = from_zig_str(str);
-			    },
-			    "fill_text":function(str, posx, posy){
-				ctx.fillText(from_zig_str(str), posx, posy);
-			    },
-			    "stroke_text":function(str, posx, posy){
-				ctx.strokeText(from_zig_str(str), posx, posy);
-			    },
-			    "fill_rect":function(px, py, w, h){
-				ctx.fillRect(px, py, w, h);
-			    },
-			    "stroke_rect":function(px,py,w,h){
-				ctx.strokeRect(px, py, w, h);
-			    },
-			    "clear_rect":function(px, py, w, h){
-				ctx.clearRect(px, py, w, h);
-			    },
-			    "begin_path":function(){
-				ctx.beginPath();
-			    },
-			    "close_path":function(){
-				ctx.closePath();
-			    }
-			    
-			}
-		    }
-		);
 	  
-	  const cxt = instance.exports.init(400, 400);
+	  
+	  
+	  async function reload_game(the_game_name){
+	      const {instance} = await WebAssembly.instantiateStreaming(
+		  fetch(the_game_name),
+		  {
+		      "env":{
+			  "memory": wasm_memory,
+			  "crypto_secure_random":function(max_uint32){
+			      const array = new BigUint64Array(1);
+			      crypto.getRandomValues(array);
+			      return array[0] % max_uint32;
+			  },
+			  "log_str":function(str){
+			      console.log(from_zig_str(str));
+			  },
+			  "resize_canvas":function(width, height){
+			      c.width = width;
+			      c.height = height;
+			  },
+			  "set_font":function(str){
+			      ctx.font = from_zig_str(str);
+			  },
+			  "fill_text":function(str, posx, posy){
+			      ctx.fillText(from_zig_str(str), posx, posy);
+			  },
+			  "stroke_text":function(str, posx, posy){
+			      ctx.strokeText(from_zig_str(str), posx, posy);
+			  },
+			  "fill_rect":function(px, py, w, h){
+			      ctx.fillRect(px, py, w, h);
+			  },
+			  "stroke_rect":function(px,py,w,h){
+			      ctx.strokeRect(px, py, w, h);
+			  },
+			  "clear_rect":function(px, py, w, h){
+			      ctx.clearRect(px, py, w, h);
+			  },
+			  "begin_path":function(){
+			      ctx.beginPath();
+			  },
+			  "close_path":function(){
+			      ctx.closePath();
+			  }
+			  
+		      }
+		  }
+	      );
+	      winst = instance;
+	      w_cxt = winst.exports.init(400, 400);
+	      winst.exports.resize_event(w_cxt, window.innerWidth, window.innerHeight);
+
+	  }
+
+	  //console.log("cxt value " + cxt);
 	  function to_c_str(str){
-	      const cstr = instance.exports.get_tmp_str(cxt, str.length);
+	      const cstr = winst.exports.get_tmp_str(w_cxt, str.length);
 	      if(str != 0){
 		  const view = new Uint8Array(
-		      instance.exports.memory.buffer,
+		      wasm_memory.buffer,
 		      cstr);
 
 		  var inx = 0;
@@ -95,76 +115,88 @@
 	      if (event.isComposing || event.keyCode === 229) {
 		  return;
 	      }
-	      instance.exports.key_event(cxt, to_c_str(event.code));
+	      winst.exports.key_event(w_cxt, to_c_str(event.code));
 	      
 	      // do something
 	  });
 	  window.addEventListener("resize", (event) => {
-	      instance.exports.resize_event(cxt, window.innerWidth, window.innerHeight);
-	  });
-	  c.addEventListener("touchstart", (e) => {
-	      e.preventDefault();
-	      //Add touch end listener that cancels itself
-	      const id = e.changedTouches[0].identifier;
-	      const px = e.changedTouches[0].pageX;
-	      const py = e.changedTouches[0].pageY;
-	      
-	      const endfun = (evt) => {
-		  for(let i = 0; i < evt.changedTouches.length; i++){
-		      if(evt.changedTouches[i].identifier == id){
-			  const dx = evt.changedTouches[i].pageX - px;
-			  const dy = evt.changedTouches[i].pageY - py;
-			  //If abs is more than a limit, send the command
-			  const rfac = 100;
-			  if((Math.abs(dx) > rfac) && (Math.abs(dx) > Math.abs(dy))){
-			      if(dx > 0){
-				  instance.exports.key_event(cxt, to_c_str("ArrowRight"));
-			      }
-			      else{
-				  instance.exports.key_event(cxt, to_c_str("ArrowLeft"));
-			      }
-			  }
-			  if((Math.abs(dy) > rfac) && (Math.abs(dy) > Math.abs(dx))){
-			      
-			      if(dy > 0){
-				  instance.exports.key_event(cxt, to_c_str("ArrowDown"));
-			      }
-			      else{
-				  instance.exports.key_event(cxt, to_c_str("ArrowUp"));
-			      }
-			  }
-		      }
-		  }
-		  c.removeEventListener("touchend", endfun);
-		  c.removeEventListener("touchcancel", cancelfun);
-		  evt.preventDefault();
-	      };
-	      const cancelfun = (evt) => {
-		  c.removeEventListener("touchend", endfun);
-		  c.removeEventListener("touchcancel", cancelfun);
-		  evt.preventDefault();
-	      };
-	      c.addEventListener("touchcancel", endfun);
-	      c.addEventListener("touchend",endfun);
-	  });
-	  c.addEventListener("touchmove", (e) => {
-	      e.preventDefault();
-	  });
-	  c.addEventListener("touchcancel", (e) => {
-	      e.preventDefault();
+	      winst.exports.resize_event(w_cxt, window.innerWidth, window.innerHeight);
 	  });
 
+	  function send_touch_evt(name, evt){
+	      for(let i = 0; i < evt.changedTouches.length; i++){
+		  const e_id = evt.changedTouches[i].identifier;
+		  const e_px = evt.changedTouches[i].pageX;
+		  const e_py = evt.changedTouches[i].pageY;
+		  winst.exports.touch_event(w_cxt, to_c_str(name),
+					    e_id, e_px, e_py);
+	      }
+	  }
+	  
+	  c.addEventListener("touchstart", (evt) => {
+	      send_touch_evt("touchstart", evt);
+	      evt.preventDefault();
+	  });
+	  
+	  c.addEventListener("touchend", (evt) => {
+	      send_touch_evt("touchend", evt);
+	      evt.preventDefault();
+	  });
+	  
+	  c.addEventListener("touchmove", (evt) => {
+	      send_touch_evt("touchmove", evt);
+	      evt.preventDefault();
+	  });
+	  
+	  c.addEventListener("touchcancel", (evt) => {
+	      send_touch_evt("touchcancel", evt);
+	      evt.preventDefault();
+	  });
+	  
 	  function draw(){
-	      instance.exports.loop(cxt);
+	      
+	      if(reload != null){
+		  if(undefined !== winst){
+		      winst.exports.deinit(w_cxt);
+		  }
+		  // c.removeEventListener("touchmove");
+		  // c.removeEventListener("touchcancel");
+		  // document.removeEventListener("keydown");
+		  // window.removeEventListener("resize");
+		  // c.removeEventListener("touchstart");
+		  
+		  reload_game(reload).then(() =>
+		      { draw();}
+		  );
+		  reload = null;
+		  return;
+		  //cxt = null;
+	      }
+	      if(undefined !== winst){
+		  winst.exports.loop(w_cxt);
+	      }
 	      window.requestAnimationFrame(draw);
 	  }
-	  instance.exports.resize_event(cxt, window.innerWidth, window.innerHeight);
+
+
+
 	  draw();
-	  //console.log(instance.exports.init(300, 300));
       }
-      doit().then(()=>{
+      
+      // load_game("brick.wasm").then(()=>{
+      // });
+
+      reload = "brick.wasm";
+      load_game().then(()=>{
+	  document.getElementById("load_snake").
+	      addEventListener("click", (e) => {
+		  reload = "snake.wasm";
+	      });
+	  document.getElementById("load_bricks").
+	      addEventListener("click", (e) => {
+		  reload = "brick.wasm";
+	      });
       });
-		    
 	
     </script>
     <div id = "infodiv">

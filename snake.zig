@@ -12,6 +12,7 @@ comptime format: []const u8,
     _=level;
     _=scope;
     _=format;
+
     _=args;
 }
 
@@ -59,8 +60,13 @@ const Context = struct{
     } = .{.rl=.r},
 
     log_buff:std.ArrayList(u8),
-    fn flush_log(self: *Context) void{
-        log_str(ZigStr.init(self.log_buff.items));
+    inline fn logger(self: *Context) std.io.AnyWriter{
+        return self.log_buff.writer().any();
+    }
+    inline fn flush_log(self: *Context) void{
+        if(self.log_buff.items.len > 0){
+            log_str(ZigStr.init(self.log_buff.items));
+        }
         self.log_buff.clearAndFree();
     }
 };
@@ -69,13 +75,15 @@ const nw = 17;
 const nh = 17;
 
 fn initerr(w:i32, h:i32) !*Context{
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const gpa_allocr = gpa.allocator();
-    errdefer _= gpa.deinit();
+    var og_gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const og_gpa_allocr = og_gpa.allocator();
+    errdefer _= og_gpa.deinit();
 
-    const cxt = try gpa_allocr.create(Context);
-    errdefer gpa_allocr.destroy(cxt);
-    cxt.gpa = gpa;
+    const cxt = try og_gpa_allocr.create(Context);
+    errdefer og_gpa_allocr.destroy(cxt);
+    cxt.gpa = og_gpa;
+    const gpa_allocr = cxt.gpa.allocator();
+    
     cxt.log_buff = std.ArrayList(u8).init(gpa_allocr);
     errdefer cxt.log_buff.deinit();
     
@@ -100,6 +108,19 @@ fn initerr(w:i32, h:i32) !*Context{
 
 export fn init(w:i32, h:i32) ?*Context{
     return initerr(w,h) catch null;
+}
+
+export fn deinit(pcxt: ?*Context) void{
+    if(pcxt)|cxt|{
+        var gpa = cxt.gpa;
+        const gpa_allocr = gpa.allocator();
+        defer _=gpa.deinit();
+        defer gpa_allocr.destroy(cxt);
+
+        cxt.log_buff.deinit();
+        cxt.tmp_str.deinit();
+        cxt.snake.deinit();
+    }
 }
 
 export fn get_tmp_str(pcxt: ?*Context, size: usize) ?[*]u8{
@@ -135,6 +156,48 @@ export fn key_event(pcxt: ?*Context, cstr: ?[*:0] const u8) void{
             }
         }
     }
+}
+
+var last_touch: ?u32 = null;
+var touch_pos = Pos{.x=0,.y=0};
+export fn touch_event(pcxt: ?*Context, evt_str: ?[*:0] u8, id: u32, px: i32, py: i32) bool{
+    // _=pcxt;
+    // _=evt_str;
+    // _=id;
+    // _=px;
+    // _=py;
+    // return false;
+    
+    if(evt_str == null) return false;
+    if(pcxt)|cxt|{
+        const evt = std.mem.span(evt_str.?);
+        if(std.mem.eql(u8, evt, "touchstart")){
+            cxt.logger().print("Touching started : {}", .{id}) catch {};
+            if(null == last_touch){
+                last_touch = id;
+                touch_pos = Pos{.x=px,.y=py};
+            }
+        }
+        if(std.mem.eql(u8, evt, "touchend")){
+            cxt.logger().print("Touching ended : {}", .{id}) catch {};
+            if((null != last_touch) and (id == last_touch.?)){
+                const dp = Pos{.x = @intCast(@abs(px - touch_pos.x)),
+                               .y = @intCast(@abs(py - touch_pos.y))};
+                const touchr = 50;
+                if((dp.x >= dp.y) and (dp.x > touchr)){
+                    cxt.logger().print("\nTouching right or left", .{}) catch {};
+                    key_event(cxt, if(px > touch_pos.x) "ArrowRight" else "ArrowLeft");
+                }
+                if((dp.y >= dp.x) and (dp.y > touchr)){
+                    cxt.logger().print("\nToucing up or down", .{}) catch {};
+                    key_event(cxt, if(py > touch_pos.y) "ArrowDown" else "ArrowUp");
+                }
+            }
+            last_touch = null;
+        }
+        cxt.flush_log();
+    }
+    return false;
 }
 
 export fn resize_event(pcxt: ?*Context, neww2: u32, newh2: u32) void{
@@ -199,8 +262,8 @@ export fn loop(pcxt: ?*Context) void{
             }
             if(was_food){
                 cxt.snake.append(nhead) catch {};
-                // cxt.log_buff.writer().print("Food generated\n", .{}) catch {};
-                // cxt.flush_log();
+                cxt.log_buff.writer().print("Food generated\n", .{}) catch {};
+                cxt.flush_log();
                 cxt.food.x = @intCast(cxt.prng.random().uintAtMost(u32, nw-1));
                 cxt.food.y = @intCast(cxt.prng.random().uintAtMost(u32, nh-1));
             }
@@ -220,7 +283,7 @@ export fn loop(pcxt: ?*Context) void{
         
         stroke_text(ZigStr.init("Welcome"), @divFloor(cxt.w, 2) - 60, @divFloor(cxt.h, 2));
         stroke_text(ZigStr.init("To"), @divFloor(cxt.w, 2)-20, @divFloor(cxt.h, 2) + 40);
-        stroke_text(ZigStr.init("The Snake Game"), @divFloor(cxt.w, 2)-125, @divFloor(cxt.h, 2) + 80);
+        stroke_text(ZigStr.init("Da Snake Game"), @divFloor(cxt.w, 2)-125, @divFloor(cxt.h, 2) + 80);
 
     }
 
