@@ -1,24 +1,5 @@
 const std = @import("std");
 
-pub const std_options = .{
-    .logFn = my_log_fn,
-};
-pub fn my_log_fn(
-comptime level: std.log.Level,            
-comptime scope: @TypeOf(.EnumLiteral),    
-comptime format: []const u8,              
-    args: anytype,
-) void {
-    _=level;
-    _=scope;
-    _=format;
-
-    _=args;
-}
-
-extern fn crypto_secure_random(max_val: u64) u64;
-extern fn log_str(str: ZigStr) void;
-extern fn resize_canvas(width: u32, height: u32) void;
 extern fn set_font(std: ZigStr) void;
 extern fn fill_text(str: ZigStr, posx: i32, posy: i32) void;
 extern fn stroke_text(str: ZigStr, posx: i32, posy: i32) void;
@@ -43,17 +24,18 @@ export fn get_tmp_str(pinst: ?*Instance, size: usize) ?[*] u8{
 }
 
 export fn touch_event(pinst: ?*Instance, evt_str: ?[*:0] const u8, id: u32, px: i32, py: i32) bool{
-    
     if(pinst)|inst|{
-        return inst.cxt.touch_event(Common.from_c_str(evt_str),
-                                    id, px, py);
+        if(@hasDecl(@TypeOf(inst.cxt), "touch_event"))
+            return inst.cxt.touch_event(Common.from_c_str(evt_str),
+                                        id, px, py);
     }
     return false;
 }
 
 export fn key_event(pinst: ?*Instance, evt_str: ?[*:0] const u8) void{
     if(pinst)|inst|{
-        inst.cxt.key_event(Common.from_c_str(evt_str));
+        if(@hasDecl(@TypeOf(inst.cxt), "key_event"))
+            inst.cxt.key_event(Common.from_c_str(evt_str));
     }
 }
 
@@ -72,8 +54,6 @@ const Pos = struct{
 
 const nw = 17;
 const nh = 17;
-
-
 
 const Context = struct{
     inst: *Instance=undefined,

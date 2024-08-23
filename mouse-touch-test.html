@@ -1,0 +1,224 @@
+<!doctype HTML>
+<html>
+  <head>
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title> Hello </title>
+  </head>
+  <body>
+    <div id="da-div" style="background:orange">
+      Hmmmmm
+      <br/>
+      <div id="s-rec"> </div>
+      <div id="e-rec"> </div>
+      <div id="m-rec"> </div>
+      <div id="c-rec"> </div>
+      <canvas id="da-canvas" width="400" height="400"></canvas>
+    </div>
+    <script src = "mouse-touch.js">
+    </script>
+    <script>
+      var c = document.getElementById("da-canvas");
+      var d = document.getElementById("da-div");
+      var ctx = c.getContext("2d");
+
+      /*
+	Touch : start, end, move, cancel events, each has a 'changed touches' property
+
+	Mouse : --auxclick --click --contextmenu --dblclick          mousedown
+	        mouseenter mouseleave mousemove mouseout mouseover mouseup
+      */
+
+      // So use only mouse enter/leave, and mouse move
+      // Use button identifiers for creating different 'kinds' of mouse pointers
+
+      //For touch, might need to derive such behaviours from 'active touch'
+      // Changed touch represent actually occuring event, and total touch
+      //   is used to find which touches are active ?
+
+      //A global state of touch:
+      //  in one of 4 states : not entered the box, just entered the box,
+      //     started moving and left the box ??
+      //     or assume it moves as it enters?
+
+      // const glob_arr = new Map();
+      // function set_item(inx, item, val){
+      // 	  if(glob_arr.get(inx) === undefined){
+      // 	      const da = {};
+      // 	      da["pos"] = [0,0];
+      // 	      da["inside"] = false;
+      // 	      glob_arr.set(inx, da);
+      // 	  }
+      // 	  const pval = glob_arr.get(inx);
+      // 	  pval[item] = val;
+      // 	  glob_arr.set(inx, pval);
+      // }
+      
+      // function dump_arr(){
+      // 	  return [...glob_arr.entries()].reduce((acc, x) => {
+      // 	      const d = x;
+      // 	      d[1].pos[0] = Math.floor(d[1].pos[0]);
+      // 	      d[1].pos[1] = Math.floor(d[1].pos[1]);
+      // 	      return acc + " " + JSON.stringify(d);
+      // 	  }, "");
+      // }
+
+      // c.addEventListener("mouseenter", (evt) => {
+      // 	  for(let i = 0; i < 10; ++i){
+      // 	      if((i == 0) || (0 != ((1<<(i-1)) & evt.buttons))){
+      // 		  set_item('m'+i, 'inside', true);
+      // 		  set_item('m'+i, 'pos', [evt.offsetX, evt.offsetY]);
+      // 	      }
+      // 	  }
+      // 	  document.getElementById("s-rec").innerText = dump_arr();
+      // 	  evt.preventDefault();
+      // });
+
+      // function get_touch_offset(tch, tgt){
+      // 	  const bcr = tgt.getBoundingClientRect();
+      // 	  const x = tch.clientX - bcr.x;
+      // 	  const y = tch.clientY - bcr.y;
+      // 	  console.log("bcr, x, y " + bcr + " " + bcr.x + " " + bcr.y + " " + x + " " + y);
+      // 	  return [x, y];
+      // }
+      
+      // c.addEventListener("touchstart", (evt) => {
+      // 	  //Can just look at targetTouches
+      // 	  for(let i = 0; i < evt.targetTouches.length; ++i){
+      // 	      const tch = evt.targetTouches[i];
+      // 	      set_item('t'+tch.identifier, 'inside', true);
+      // 	      set_item('t'+tch.identifier, 'pos', get_touch_offset(tch, c));
+      // 	  }
+      // 	  // for(let i = 0; i < evt.changedTouches.length; ++i){
+      // 	  //     const tch = evt.changedTouches[i];
+      // 	  //     if(glob_arr.get('t'+tch.identifier).inside === true)
+      // 	  // 	  set_item('t'+tch.identifier, 'moving', false);
+      // 	  // }
+      // 	  document.getElementById("s-rec").innerText = dump_arr();
+      // 	  evt.preventDefault();
+      // });
+      
+      // c.addEventListener("touchend", (evt) => {
+      // 	  for(let i = 0; i < evt.changedTouches.length; ++i){
+      // 	      const tch = evt.changedTouches[i];
+      // 	      if(glob_arr.get('t'+tch.identifier).inside === true){
+      // 		  //set_item('t'+tch.identifier, 'moving', false);
+      // 		  set_item('t'+tch.identifier, 'inside', false);
+      // 	      }
+      // 	  }
+      // 	  document.getElementById("s-rec").innerText = dump_arr();
+      // 	  evt.preventDefault();
+      // });
+
+      
+      // c.addEventListener("touchcancel", (evt) => {
+      // 	  for(let i = 0; i < evt.changedTouches.length; ++i){
+      // 	      const tch = evt.changedTouches[i];
+      // 	      if(glob_arr.get('t'+tch.identifier).inside === true){
+      // 		  //set_item('t'+tch.identifier, 'moving', false);
+      // 		  set_item('t'+tch.identifier, 'inside', false);
+      // 	      }
+      // 	  }
+      // 	  document.getElementById("s-rec").innerText = dump_arr();
+      // 	  evt.preventDefault();
+      // });
+
+      // c.addEventListener("mouseleave", (evt) => {
+      // 	  for(let i = 0; i < 10; ++i){
+      // 	      if(glob_arr.get('m'+i) !== undefined)
+      // 		  set_item('m'+i, 'inside', false);
+      // 		  //set_item('m0', 'pos', [evt.offsetX, evt.offsetY]);
+      // 	  }
+      // 	  document.getElementById("s-rec").innerText = dump_arr();
+      // 	  evt.preventDefault();
+      // });
+            
+      
+      // c.addEventListener("touchmove", (evt) => {
+      // 	  const ids = []
+      // 	  for(let i = 0; i < evt.changedTouches.length; ++i){
+      // 	      const tch = evt.changedTouches[i];
+      // 	      ids.push(tch.identifier);
+      // 	  }
+      // 	  for(let i = 0; i < evt.targetTouches.length; ++i){
+      // 	      const tch = evt.targetTouches[i];
+      // 	      if(ids.find((x) => (x == tch.identifier)) !== undefined){
+      // 		  //if(glob_arr.get('t'+tch.identifier).inside === true)
+      // 		  const p = get_touch_offset(tch, c);
+      // 		  const bb = c.getBoundingClientRect();
+      // 		  //document.getElementById("c-rec").innerText =
+      // 		  //JSON.stringify([bb.width, bb.height]) + " " + JSON.stringify(p) + ;
+      // 		  const is_in = (p[0] <= bb.width) && (p[1] <= bb.height) &&
+      // 			(p[0] >= 0) && (p[1] >= 0);
+      // 		  const was_in = glob_arr.get('t'+tch.identifier).inside === true;
+
+      // 		  if(is_in){
+      // 		      set_item('t'+tch.identifier, 'pos',
+      // 			       get_touch_offset(tch, c));
+      // 		      if(!was_in){
+      // 			  //Simulate touch enter event here
+      // 			  set_item('t'+tch.identifier, 'inside', true);
+      // 		      }
+      // 		  }
+      // 		  else if(!is_in && was_in){
+      // 		      //Simulate touch cancel event here
+      // 		      set_item('t'+tch.identifier, 'inside', false);
+      // 		  }
+		  
+      // 	      }
+      // 	  }
+      // 	  document.getElementById("s-rec").innerText = dump_arr();
+      // 	  evt.preventDefault();
+      // });
+      
+      // c.addEventListener("mousemove", (evt) => {
+      // 	  for(let i = 0; i < 10; ++i){
+      // 	      if((i == 0) || (0 != ((1<<(i-1)) & evt.buttons))){
+      // 		  set_item('m'+i, 'inside', true);
+      // 		  set_item('m'+i, 'pos', [evt.offsetX, evt.offsetY]);
+      // 		  //set_item('m0', 'pos', [evt.offsetX, evt.offsetY]);
+      // 	      }
+      // 	      else{
+      // 		  //Simulate mouse leave event here
+      // 		  if(glob_arr.get('m'+i) !== undefined)
+      // 		      set_item('m'+i, 'inside', false);
+      // 	      }
+      // 	  }
+      // 	  document.getElementById("s-rec").innerText = dump_arr();
+      // 	  evt.preventDefault();
+      // });
+
+
+      var handler = null;
+      const da_func = (evt) => {
+	  if(evt.action === 'move'){
+	      document.getElementById("s-rec").innerText =
+		  [...handler.events.entries()].reduce((acc, x) => {
+		      const d = x;
+		      d[1].pos[0] = Math.floor(d[1].pos[0]);
+		      d[1].pos[1] = Math.floor(d[1].pos[1]);
+		      return acc + " " + JSON.stringify(d);
+		  }, "");
+	  }
+	  else{
+	      console.log("Event of type " + evt.action +
+			  " occured on " + evt.type + " with id " + evt.id);
+	  }
+	  return true;
+      };
+      
+      handler = create_touch_and_mouse_events(c, da_func);
+
+      setInterval(()=>{
+	  ctx.fillStyle="rgba(255,255,255, 0.5)";
+	  ctx.fillRect(0, 0, 400, 400);
+      }, 300);
+      
+      
+    </script>
+
+    Hella yes
+    <br/>
+    Yes yes yes
+  </body>
+</html>
