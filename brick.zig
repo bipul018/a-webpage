@@ -1,15 +1,15 @@
 const std = @import("std");
 
-extern fn set_font(std: ZigStr) void;
-extern fn fill_text(str: ZigStr, posx: i32, posy: i32) void;
-extern fn stroke_text(str: ZigStr, posx: i32, posy: i32) void;
-extern fn fill_rect(x: i32, y: i32, wid: i32, hei: i32) void;
-extern fn stroke_rect(x: i32, y: i32, wid: i32, hei: i32) void;
-extern fn clear_rect(x: i32, y: i32, wid: i32, hei: i32) void;
+// extern fn set_font(std: ZigStr) void;
+// extern fn fill_text(str: ZigStr, posx: i32, posy: i32) void;
+// extern fn stroke_text(str: ZigStr, posx: i32, posy: i32) void;
+// extern fn fill_rect(x: i32, y: i32, wid: i32, hei: i32) void;
+// extern fn stroke_rect(x: i32, y: i32, wid: i32, hei: i32) void;
+// extern fn clear_rect(x: i32, y: i32, wid: i32, hei: i32) void;
 
-const Common = @import("common.zig");
-const Instance = Common.Instance(Context);
-const ZigStr = Common.ZigStr;
+const JS = @import("common.zig");
+const Instance = JS.Instance(Context);
+const ZigStr = JS.ZigStr;
 
 export fn init(w:i32, h:i32) ?*Instance{
     return Instance.init(w, h) catch return null;
@@ -26,7 +26,7 @@ export fn get_tmp_str(pinst: ?*Instance, size: usize) ?[*] u8{
 export fn touch_event(pinst: ?*Instance, evt_str: ?[*:0] const u8, id: u32, px: i32, py: i32) bool{
     if(pinst)|inst|{
         if(@hasDecl(@TypeOf(inst.cxt), "touch_event"))
-            return inst.cxt.touch_event(Common.from_c_str(evt_str),
+            return inst.cxt.touch_event(JS.from_c_str(evt_str),
                                         id, px, py);
     }
     return false;
@@ -35,7 +35,7 @@ export fn touch_event(pinst: ?*Instance, evt_str: ?[*:0] const u8, id: u32, px: 
 export fn key_event(pinst: ?*Instance, evt_str: ?[*:0] const u8) void{
     if(pinst)|inst|{
         if(@hasDecl(@TypeOf(inst.cxt), "key_event"))
-            inst.cxt.key_event(Common.from_c_str(evt_str));
+            inst.cxt.key_event(JS.from_c_str(evt_str));
     }
 }
 
@@ -50,14 +50,48 @@ export fn loop(pinst: ?*Instance) void{
 const Vec2 = struct{
     x: f32,
     y: f32,
+
+    pub fn rotate(self: @This(), degs: f32) @This(){
+        const s = std.math.sin(std.math.degreesToRadians(degs));
+        const c = std.math.cos(std.math.degreesToRadians(degs));
+        return @This(){
+            .x = self.x * c - self.y * s,
+            .y = self.x * s + self.y * c
+        };
+    }
+    pub fn sx_(self: @This()) @This(){
+        return @This(){.x = self.x, .y = 0};
+    }
+    pub fn s_y(self: @This()) @This(){
+        return @This(){.x = 0, .y = self.y};
+    }
+    pub fn syx(self: @This()) @This(){
+        return @This(){.x = self.x, .y = self.y};
+    }
+    pub fn scale(self: @This(), fac: f32) @This(){
+        return @This(){.x = self.x * fac, .y = self.y * fac};
+    }
 };
 
+pub fn add(a: Vec2, b: Vec2) Vec2{
+    return Vec2{.x = a.x + b.x,
+                .y = a.y + b.y};
+}
+pub fn dot(a: Vec2, b: Vec2) f32{
+    return a.x * b.x + a.y * b.y;
+}
 //Aspect ratio, width to height of a cell
 const as_rt : f32 = 16.0/9.0;
 
 //Number of cells along width and height
-const cols = 20;
-const rows = 30;
+const cols = 18;
+const rows = 20;
+var glob: *Instance = undefined;
+
+pub fn log(comptime format:[] const u8,
+           args: anytype) void{
+    glob.log_buff.writer().print(format, args) catch {};
+}
 
 const Context = struct{
     inst: *Instance = undefined,
@@ -75,6 +109,11 @@ const Context = struct{
                 //tmp[i][j] = true;
             }
         }
+        // for(0..4)|i|{
+        //     for(0..rows/2)|j|{
+        //         tmp[j][i] = false;
+        //     }
+        // }
         tmp[rows/4][cols/2] = false;
         break :blk tmp;
     },
@@ -85,9 +124,11 @@ const Context = struct{
     breaker_pos:Vec2 = Vec2{.x = cols/2.0, .y = rows - 2},
 
     //Info of ball
-    ball_rad:f32 = 0.4,
-    ball_cen:Vec2 = Vec2{.x = cols/2.0, .y = rows - 3 - 0.4},
-    ball_vel:Vec2 = Vec2{.x = 0, .y = -0.1},
+    ball_rad:f32 = 0.4, // Fraction of radius expressed in terms of width
+    ball_cen:Vec2 = Vec2{.x = cols/2.0, .y = rows - 4 - 0.4},
+    ball_vel:Vec2 = Vec2{.x = -0.0, .y = 0.3},
+    //ball_cen:Vec2 = Vec2{.x = 0, .y = 3 - 0.1},
+    //ball_vel:Vec2 = Vec2{.x = -0.1, .y = -0.0},
 
     fn calc_used_dim(self: * const Context) Vec2{
         //Calculate ratio of total width to total height needed,
@@ -110,6 +151,7 @@ const Context = struct{
                                .y = used_dim.y / rows};
         return cell_size;
     }
+
     fn to_canvas_coord(self: * const Context, pos: Vec2) Vec2{
         const cell_size = self.calc_cell_size();
         const pt = Vec2{.x = pos.x * cell_size.x,
@@ -128,6 +170,7 @@ const Context = struct{
         self.inst = inst;
         const gpa_allocr = inst.gpa.allocator();
         _=gpa_allocr;
+        glob = inst;
         return self;
     }
     pub fn deinit(self: *@This()) void{
@@ -136,25 +179,161 @@ const Context = struct{
     pub fn key_event(self: *@This(), key_name:[] const u8) void{
         self.event.key_event(key_name);
     }
-    // pub fn touch_event(self: *@This(), evt_name:[] const u8,
-    //                    id: u32, px: i32, py: i32) bool{
-    //     return self.event.touch_event(evt_name, id,
-    //                                   px, py);
-    // }
+    pub fn touch_event(self: *@This(), evt_name:[] const u8,
+                       id: u32, px: i32, py: i32) bool{
+        return self.event.touch_event(evt_name, id,
+                                      px, py);
+    }
     pub fn loop(self: *@This()) void{
         //Update
         const move_speed = 0.5;
-        if(self.event.left){
-            self.breaker_pos.x = @max(1, self.breaker_pos.x - move_speed);
+        if(self.event.last_touch == null){
+            if(self.event.left){
+                self.breaker_pos.x = @max(1, self.breaker_pos.x - move_speed);
+            }
+            if(self.event.right){
+                self.breaker_pos.x = @min(cols-1, self.breaker_pos.x + move_speed);
+            }
         }
-        if(self.event.right){
-            self.breaker_pos.x = @min(cols-1, self.breaker_pos.x + move_speed);
+        else{
+            self.breaker_pos.x = self.from_canvas_coord(
+                Vec2{
+                    .x = @floatFromInt(self.event.touch_pos.x),
+                    .y = @floatFromInt(self.event.touch_pos.y),
+            }).x;
+            self.breaker_pos.x = @max(1, self.breaker_pos.x);
+            self.breaker_pos.x = @min(cols-1, self.breaker_pos.x);
         }
         self.event.reset_events();
+
+        self.ball_cen.x += self.ball_vel.x;
+        self.ball_cen.y += self.ball_vel.y;
+
+        const bth = struct{
+            pcxt: * Context,
+            fn init(cxt: *Context) @This(){
+                return @This(){.pcxt = cxt};
+            }
+            fn log(selfme: @This()) void{
+                glob.log_buff.writer().print("Ball at {d} {d} \n",
+                                                  .{selfme.pcxt.ball_cen.x,
+                                                    selfme.pcxt.ball_cen.y}) catch {};
+                glob.flush_log();
+            }
+            fn reflect(val: f32, boundary: f32, dir: enum{less,more}) ?f32{
+                if(((dir == .less) and (val > boundary)) or
+                       ((dir == .more) and (val < boundary))){
+                        return 2*boundary-val;
+                }
+                return null;
+            }
+            fn between(val: f32, pad: f32, low: f32, high: f32) bool{
+                if(low > high)
+                    return between(val, pad, high, low);
+                return ((val-pad) <= high) and
+                    ((val+pad) >= low);
+            }
+        }.init(self);
+        const ref = @TypeOf(bth).reflect;
+        const betn = @TypeOf(bth).between;
+
+        //Reflect with boundaries
+        if(ref(self.ball_cen.x, self.ball_rad, .more))|nx|{
+            self.ball_cen.x = nx;
+            self.ball_vel.x = -self.ball_vel.x;
+        }
+        if(ref(self.ball_cen.x, cols-self.ball_rad, .less))|nx|{
+            self.ball_cen.x = nx;
+            self.ball_vel.x = -self.ball_vel.x;
+        }
+        
+        if(ref(self.ball_cen.y, self.ball_rad * rows/cols, .more))|ny|{
+            self.ball_cen.y = ny;
+            self.ball_vel.y = -self.ball_vel.y;
+        }
+        if(ref(self.ball_cen.y, rows-self.ball_rad*rows/cols, .less))|ny|{
+            self.ball_cen.y = ny;
+            self.ball_vel.y = -self.ball_vel.y;
+        }
+
+        //Reflect with board
+        if(ref(self.ball_cen.y, self.breaker_pos.y-self.ball_rad*rows/cols, .less))|my|{
+            if((self.ball_cen.x >= (self.breaker_pos.x - self.breaker_len/2 - self.ball_rad)) and (self.ball_cen.x <= (self.breaker_pos.x + self.breaker_len/2 + self.ball_rad))){
+                self.ball_cen.y = my;
+                self.ball_vel.y = -self.ball_vel.y;
+                //Distort the velocity direction according to % of breaker point
+                const frac = 35 * (self.ball_cen.x - self.breaker_pos.x)/(self.breaker_len/2);
+                const ref_norm = (Vec2{.x = 0, .y = -1.0}).rotate(frac);
+                const ref_perp = (Vec2{.x = 1, .y = 0}).rotate(frac);
+
+                self.ball_vel = add(ref_norm.scale(dot(ref_norm, self.ball_vel)),
+                                    ref_perp.scale(-dot(ref_perp, self.ball_vel)));
+
+                // self.ball_vel = add(self.ball_vel.sx_(),
+                //                     self.ball_vel.s_y().rotate(frac));
+            }
+        }
+
+        //Collide with the bricks
+        {
+            var coll_x = false;
+            var coll_y = false;
+            for(self.bricks, 0..)|row, i|{
+                for(row, 0..)|cell, j|{
+                    if(!cell) continue;
+                    const pos = Vec2{
+                        .x = @floatFromInt(j),
+                        .y = @floatFromInt(i),
+                    };
+                    const brad = Vec2{
+                        .x = self.ball_rad,
+                        .y = self.ball_rad * rows/cols
+                    };
+                    //Not considering radius and position readjustment
+                    const xcoll = betn(pos.x-brad.x,0, self.ball_cen.x,
+                                       self.ball_cen.x - self.ball_vel.x) or
+                        betn(pos.x+brad.x+1,0, self.ball_cen.x,
+                             self.ball_cen.x - self.ball_vel.x);
+                    const ycoll = betn(pos.y-brad.y,0, self.ball_cen.y,
+                                       self.ball_cen.y - self.ball_vel.y) or
+                        betn(pos.y+brad.y+1,0, self.ball_cen.y,
+                             self.ball_cen.y - self.ball_vel.y);
+                    const is_in =
+                        betn(self.ball_cen.y, 0, pos.y-brad.y, pos.y+1+brad.y) and
+                        betn(self.ball_cen.x,0, pos.x-brad.x, pos.x+1+brad.x);
+                    if((xcoll or ycoll) and is_in){
+                        self.bricks[i][j] = false;
+                        coll_x = coll_x or xcoll; coll_y = coll_y or ycoll;
+                    }
+                    if(is_in and !xcoll and !ycoll){
+                        log("Ball is inside a brick but it did so withouht crossing any boundaries !!!!!\n", .{});
+                    }
+
+                }
+            }
+            if(coll_x){
+                self.ball_vel.x *= -1;
+            }
+            if(coll_y){
+                self.ball_vel.y *= -1;
+            }
+        }
+        glob.flush_log();
         
         //Draw
-        clear_rect(0, 0, self.inst.w, self.inst.h);
+        JS.clear_rect(0, 0, self.inst.w, self.inst.h);
 
+        {
+            const bp = self.to_canvas_coord(self.ball_cen);
+            JS.set_fill_style(ZigStr.init("#00ff00"));
+            JS.fill_circle(@intFromFloat(bp.x),
+                           @intFromFloat(bp.y),
+                           @intFromFloat(self.ball_rad * self.calc_cell_size().x));
+            
+            JS.set_fill_style(ZigStr.init("#000000"));
+        }
+                
+        
         for(self.bricks, 0..)|row, i|{
             for(row, 0..)|cell, j|{
 
@@ -165,12 +344,13 @@ const Context = struct{
                     var dim = self.calc_cell_size();
                     dim.x *= 0.9;
                     dim.y *= 0.9;
-                    const pos = Vec2{
+                    var pos = Vec2{
                         .x = @floatFromInt(j),
                         .y = @floatFromInt(i),
                     };
+                    pos.x += 0.05; pos.y += 0.05;
                     const cpos = self.to_canvas_coord(pos);
-                    fill_rect(@intFromFloat(cpos.x), @intFromFloat(cpos.y),
+                    JS.fill_rect(@intFromFloat(cpos.x), @intFromFloat(cpos.y),
                               @intFromFloat(dim.x), @intFromFloat(dim.y));
                 }
 
@@ -187,16 +367,16 @@ const Context = struct{
             dim.x *= self.breaker_len;
 
             const cpos = self.to_canvas_coord(pos);
-            fill_rect(@intFromFloat(cpos.x), @intFromFloat(cpos.y),
+            JS.fill_rect(@intFromFloat(cpos.x), @intFromFloat(cpos.y),
                       @intFromFloat(dim.x), @intFromFloat(dim.y));
         }
         
         
-        set_font(ZigStr.init("bold 30px serif"));
+        JS.set_font(ZigStr.init("bold 30px serif"));
         
-        stroke_text(ZigStr.init("This is"), @divFloor(self.inst.w, 2) - 60, @divFloor(self.inst.h, 2));
-        stroke_text(ZigStr.init("An Amazing"), @divFloor(self.inst.w, 2)-20, @divFloor(self.inst.h, 2) + 40);
-        stroke_text(ZigStr.init("Brick Game"), @divFloor(self.inst.w, 2)-125, @divFloor(self.inst.h, 2) + 80);
+        JS.stroke_text(ZigStr.init("This is"), @divFloor(self.inst.w, 2) - 60, @divFloor(self.inst.h, 2));
+        JS.stroke_text(ZigStr.init("An Amazing"), @divFloor(self.inst.w, 2)-20, @divFloor(self.inst.h, 2) + 40);
+        JS.stroke_text(ZigStr.init("Brick Game"), @divFloor(self.inst.w, 2)-125, @divFloor(self.inst.h, 2) + 80);
 
     }
 };
@@ -235,26 +415,31 @@ const BoardEvents = struct{
 
     pub fn touch_event(self: *@This(), evt_name: [] const u8,
                        id: u32, px: i32, py: i32) bool{
+        self.last_touch = id;
+        self.touch_pos = Pos{.x=px,.y=py};
+        //glob.log_buff.writer().print("Touch event : {} {} \n", .{px, py}) catch {};
         if(std.mem.eql(u8, evt_name, "touchstart")){
-            if(null == self.last_touch){
-                self.last_touch = id;
-                self.touch_pos = Pos{.x=px,.y=py};
-            }
+            // if(null == self.last_touch){
+            //     self.last_touch = id;
+            //     self.touch_pos = Pos{.x=px,.y=py};
+            // }
         }
         if(std.mem.eql(u8, evt_name, "touchend")){
-            if((null != self.last_touch) and (id == self.last_touch.?)){
-                const dp = Pos{.x = @intCast(@abs(px - self.touch_pos.x)),
-                               .y = @intCast(@abs(py - self.touch_pos.y))};
-                const touchr = 50;
-                if((dp.x >= dp.y) and (dp.x > touchr)){
-                    self.key_event(if(px > self.touch_pos.x) "ArrowRight" else "ArrowLeft");
-                }
-                if((dp.y >= dp.x) and (dp.y > touchr)){
-                    self.key_event(if(py > self.touch_pos.y) "ArrowDown" else "ArrowUp");
-                }
+            if(id == self.last_touch){
+                // const dp = Pos{.x = @intCast(@abs(px - self.touch_pos.x)),
+                //                .y = @intCast(@abs(py - self.touch_pos.y))};
+                // const touchr = 50;
+                // if((dp.x >= dp.y) and (dp.x > touchr)){
+                //     self.key_event(if(px > self.touch_pos.x) "ArrowRight" else "ArrowLeft");
+                // }
+                // if((dp.y >= dp.x) and (dp.y > touchr)){
+                //     self.key_event(if(py > self.touch_pos.y) "ArrowDown" else "ArrowUp");
+                // }
+                self.last_touch = null;
             }
-            self.last_touch = null;
+
         }
+        glob.flush_log();
         return false;
     }
 };

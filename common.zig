@@ -34,15 +34,17 @@ pub fn from_c_str(cstr: ?[*:0] const u8) [] const u8{
     return "";
 }
 
-extern fn crypto_secure_random(max_val: u64) u64;
-extern fn log_str(str: ZigStr) void;
-extern fn resize_canvas(width: u32, height: u32) void;
-extern fn set_font(std: ZigStr) void;
-extern fn fill_text(str: ZigStr, posx: i32, posy: i32) void;
-extern fn stroke_text(str: ZigStr, posx: i32, posy: i32) void;
-extern fn fill_rect(x: i32, y: i32, wid: i32, hei: i32) void;
-extern fn stroke_rect(x: i32, y: i32, wid: i32, hei: i32) void;
-extern fn clear_rect(x: i32, y: i32, wid: i32, hei: i32) void;
+pub extern fn crypto_secure_random(max_val: u64) u64;
+pub extern fn log_str(str: ZigStr) void;
+pub extern fn resize_canvas(width: u32, height: u32) void;
+pub extern fn set_font(fnt: ZigStr) void;
+pub extern fn set_fill_style(fstl: ZigStr) void;
+pub extern fn fill_text(str: ZigStr, posx: i32, posy: i32) void;
+pub extern fn stroke_text(str: ZigStr, posx: i32, posy: i32) void;
+pub extern fn fill_rect(x: i32, y: i32, wid: i32, hei: i32) void;
+pub extern fn fill_circle(x: i32, y: i32, r: i32) void;
+pub extern fn stroke_rect(x: i32, y: i32, wid: i32, hei: i32) void;
+pub extern fn clear_rect(x: i32, y: i32, wid: i32, hei: i32) void;
 
 pub fn Instance(T: anytype) type{
     return struct{

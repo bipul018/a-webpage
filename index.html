@@ -65,6 +65,9 @@
 			  "set_font":function(str){
 			      ctx.font = from_zig_str(str);
 			  },
+			  "set_fill_style":function(str){
+			      ctx.fillStyle = from_zig_str(str);
+			  },
 			  "fill_text":function(str, posx, posy){
 			      ctx.fillText(from_zig_str(str), posx, posy);
 			  },
@@ -73,6 +76,11 @@
 			  },
 			  "fill_rect":function(px, py, w, h){
 			      ctx.fillRect(px, py, w, h);
+			  },
+			  "fill_circle":function(px, py, r){
+			      ctx.beginPath();
+			      ctx.arc(px, py, r, 0, 2 * Math.PI);
+			      ctx.fill();
 			  },
 			  "stroke_rect":function(px,py,w,h){
       ctx.strokeRect(px, py, w, h);
