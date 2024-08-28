@@ -54,7 +54,7 @@ const Pos = struct{
 
 const nw = 17;
 const nh = 17;
-
+var glob: *Instance = undefined;
 const Context = struct{
     inst: *Instance=undefined,
     wait:u32=0,
@@ -79,6 +79,7 @@ const Context = struct{
                                    uintAtMost(u32, nw-1));
         self.food.y = @intCast(inst.prng.random().
                                    uintAtMost(u32, nh-1));
+        glob = inst;
         return self;   
     }
     pub fn deinit(self: *@This()) void{
@@ -230,17 +231,22 @@ const SnakeEvents = struct{
         if(std.mem.eql(u8, key_name, "ArrowLeft")){
             self.left = true;
         }
+        glob.flush_log();
     }
 
     pub fn touch_event(self: *@This(), evt_name: [] const u8,
                        id: u32, px: i32, py: i32) bool{
-        if(std.mem.eql(u8, evt_name, "touchstart")){
-            if(null == self.last_touch){
+        if(std.mem.eql(u8, evt_name, "enter")){
+            //if(null == self.last_touch){
                 self.last_touch = id;
                 self.touch_pos = Pos{.x=px,.y=py};
-            }
+            //}
+            glob.log_buff.writer().print("Enter event at {} {}\n", .{px, py}) catch {};
+
         }
-        if(std.mem.eql(u8, evt_name, "touchend")){
+        if(std.mem.eql(u8, evt_name, "leave")){
+            glob.log_buff.writer().print("Leave event del {} {} \n", .{
+                px - self.touch_pos.x, py - self.touch_pos.y}) catch {};
             if((null != self.last_touch) and (id == self.last_touch.?)){
                 const dp = Pos{.x = @intCast(@abs(px - self.touch_pos.x)),
                                .y = @intCast(@abs(py - self.touch_pos.y))};
@@ -251,9 +257,10 @@ const SnakeEvents = struct{
                 if((dp.y >= dp.x) and (dp.y > touchr)){
                     self.key_event(if(py > self.touch_pos.y) "ArrowDown" else "ArrowUp");
                 }
+                self.last_touch = null;
             }
-            self.last_touch = null;
         }
+        glob.flush_log();
         return false;
     }
 };

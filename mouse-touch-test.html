@@ -12,7 +12,6 @@
       <div id="s-rec"> </div>
       <div id="e-rec"> </div>
       <div id="m-rec"> </div>
-      <div id="c-rec"> </div>
       <canvas id="da-canvas" width="400" height="400"></canvas>
     </div>
     <script src = "mouse-touch.js">
@@ -201,6 +200,9 @@
 		  }, "");
 	  }
 	  else{
+	      document.getElementById("c-rec").innerText +=
+		  "Event of type " + evt.action +
+		  " occured on " + evt.type + " with id " + evt.id + "\n";
 	      console.log("Event of type " + evt.action +
 			  " occured on " + evt.type + " with id " + evt.id);
 	  }
@@ -220,5 +222,7 @@
     Hella yes
     <br/>
     Yes yes yes
+    
+    <div id="c-rec"> </div>
   </body>
 </html>

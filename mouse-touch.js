@@ -15,7 +15,7 @@
 
 //handler gets provided
 // A> that touch/mouse event id : 'id'
-// B> that touch/mouse event type : 'type' 
+// B> that touch/mouse type : 'type'
 // C> that touch/mouse event relative offset as array of two coords: 'pos' 
 // D> action , enter, move or leave
 // E> key states of ctrl, shift, meta, alt 
@@ -61,16 +61,20 @@ function create_touch_and_mouse_events(object, handler){
 	    "action" : action,
 	    "altKey" : event.altKey,
 	    "metaKey" : event.metaKey,
+	    "pos" : [],
 	    "shiftKey" : event.shiftKey,
 	    "ctrlKey" : event.ctrlKey
 	};
 	if(type === "mouse")
-	    da_event["pos"] = [event.offsetX, event.offsetY];
+	    da_event.pos = [event.offsetX, event.offsetY];
 	else{
 	    for(let i = 0; i < event.touches.length; ++i){
 		const tch = event.touches[i];
 		if(tch.identifier == id)
-		    da_event["pos"] = get_touch_offset(tch, object);
+		    da_event.pos = get_touch_offset(tch, object);
+	    }
+	    if(da_event.pos[0] === undefined){
+		da_event.pos = glob_arr.get('t' + id).pos;
 	    }
 	}
 	return da_event;

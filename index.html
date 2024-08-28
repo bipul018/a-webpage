@@ -9,6 +9,7 @@
     <button id="load_snake"> Snake Game </button>
     <button id="load_bricks"> Bricks Game </button>
     <canvas id="da-canvas" width="400" height="400"></canvas>
+    <script src = "mouse-touch.js"> </script>
     <script>
       var c = document.getElementById("da-canvas");
       //c.width=400;
@@ -56,7 +57,7 @@
 			  },
 			  "log_str":function(str){
 			      console.log(from_zig_str(str));
-			  },
+      },
 			  "resize_canvas":function(width, height){
 			      c.width = width;
 			      c.height = height;
@@ -74,7 +75,7 @@
 			      ctx.fillRect(px, py, w, h);
 			  },
 			  "stroke_rect":function(px,py,w,h){
-			      ctx.strokeRect(px, py, w, h);
+      ctx.strokeRect(px, py, w, h);
 			  },
 			  "clear_rect":function(px, py, w, h){
 			      ctx.clearRect(px, py, w, h);
@@ -97,7 +98,7 @@
 
 	  //console.log("cxt value " + cxt);
 	  function to_c_str(str){
-	      const cstr = winst.exports.get_tmp_str(w_cxt, str.length);
+      const cstr = winst.exports.get_tmp_str(w_cxt, str.length);
 	      if(str != 0){
 		  const view = new Uint8Array(
 		      wasm_memory.buffer,
@@ -116,45 +117,27 @@
 		  return;
 	      }
 	      winst.exports.key_event(w_cxt, to_c_str(event.code));
-	      
+      
 	      // do something
 	  });
 	  window.addEventListener("resize", (event) => {
 	      winst.exports.resize_event(w_cxt, window.innerWidth, window.innerHeight);
 	  });
 
-	  function send_touch_evt(name, evt){
-	      for(let i = 0; i < evt.changedTouches.length; i++){
-		  const e_id = evt.changedTouches[i].identifier;
-		  const e_px = evt.changedTouches[i].pageX;
-		  const e_py = evt.changedTouches[i].pageY;
-		  winst.exports.touch_event(w_cxt, to_c_str(name),
-					    e_id, e_px, e_py);
-	      }
-	  }
-	  
-	  c.addEventListener("touchstart", (evt) => {
-	      send_touch_evt("touchstart", evt);
-	      evt.preventDefault();
-	  });
-	  
-	  c.addEventListener("touchend", (evt) => {
-	      send_touch_evt("touchend", evt);
-	      evt.preventDefault();
-	  });
-	  
-	  c.addEventListener("touchmove", (evt) => {
-	      send_touch_evt("touchmove", evt);
-	      evt.preventDefault();
-	  });
-	  
-	  c.addEventListener("touchcancel", (evt) => {
-	      send_touch_evt("touchcancel", evt);
-	      evt.preventDefault();
-	  });
 
-	  
-	  
+	  function send_touch_evt(event){
+	      //console.log("touch"+event.action);
+	      if("mouse" == event.type)
+		  winst.exports.touch_event(w_cxt, to_c_str(event.action),
+					    100+(event.id%100), event.pos[0], event.pos[1]);
+	      else
+		  winst.exports.touch_event(w_cxt, to_c_str(event.action),
+					    (event.id%100), event.pos[0], event.pos[1]);
+	      return true;
+	  }
+
+	  const pointer_handle = create_touch_and_mouse_events(c, send_touch_evt);
+	  	  
 	  function draw(){
 	      
 	      if(reload != null){
@@ -162,7 +145,7 @@
 		      winst.exports.deinit(w_cxt);
 		  }
 		  // c.removeEventListener("touchmove");
-		  // c.removeEventListener("touchcancel");
+      // c.removeEventListener("touchcancel");
 		  // document.removeEventListener("keydown");
 		  // window.removeEventListener("resize");
 		  // c.removeEventListener("touchstart");
@@ -190,16 +173,16 @@
 
       reload = "brick.wasm";
       load_game().then(()=>{
-	  document.getElementById("load_snake").
-	      addEventListener("click", (e) => {
-		  reload = "snake.wasm";
-	      });
-	  document.getElementById("load_bricks").
-	      addEventListener("click", (e) => {
-		  reload = "brick.wasm";
-	      });
+      document.getElementById("load_snake").
+      addEventListener("click", (e) => {
+      reload = "snake.wasm";
       });
-	
+      document.getElementById("load_bricks").
+      addEventListener("click", (e) => {
+      reload = "brick.wasm";
+      });
+      });
+      
     </script>
     <div id = "infodiv">
       Made with Zig using WASM at <a href="https://github.com/bipul018/a-webpage"> Github </a>
