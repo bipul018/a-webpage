@@ -263,7 +263,7 @@ const Context = struct{
                 self.ball_cen.y = my;
                 //self.ball_vel.y = -self.ball_vel.y;
                 //Distort the velocity direction according to % of breaker point
-                const frac = 35 * (self.ball_cen.x - self.breaker_pos.x)/(self.breaker_len/2);
+                const frac = 45 * (self.ball_cen.x - self.breaker_pos.x)/(self.breaker_len*0.5);
                 const ref_norm = (Vec2{.x = 0, .y = -1.0}).rotate(frac);
                 const ref_perp = (Vec2{.x = 1, .y = 0}).rotate(frac);
 
@@ -279,6 +279,7 @@ const Context = struct{
         {
             var coll_x = false;
             var coll_y = false;
+            var coll_count:f32 = 0;
             for(self.bricks, 0..)|row, i|{
                 for(row, 0..)|cell, j|{
                     if(!cell) continue;
@@ -305,6 +306,7 @@ const Context = struct{
                     if((xcoll or ycoll) and is_in){
                         self.bricks[i][j] = false;
                         coll_x = coll_x or xcoll; coll_y = coll_y or ycoll;
+                        coll_count += 1.0;
                     }
                     if(is_in and !xcoll and !ycoll){
                         log("Ball is inside a brick but it did so withouht crossing any boundaries !!!!!\n", .{});
@@ -318,6 +320,8 @@ const Context = struct{
             if(coll_y){
                 self.ball_vel.y *= -1;
             }
+            self.ball_vel = add(self.ball_vel, Vec2{.x = coll_count * 0.005,
+                                                    .y = coll_count * 0.005});
         }
         glob.flush_log();
         
