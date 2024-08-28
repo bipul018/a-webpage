@@ -119,7 +119,7 @@ const Context = struct{
     },
     
     //Info of breaker
-    breaker_len:f32 = 2.0,
+    breaker_len:f32 = 3.0,
     //Center along x, but top of y
     breaker_pos:Vec2 = Vec2{.x = cols/2.0, .y = rows - 2},
 
@@ -259,15 +259,16 @@ const Context = struct{
         //Reflect with board
         if(ref(self.ball_cen.y, self.breaker_pos.y-self.ball_rad*rows/cols, .less))|my|{
             if((self.ball_cen.x >= (self.breaker_pos.x - self.breaker_len/2 - self.ball_rad)) and (self.ball_cen.x <= (self.breaker_pos.x + self.breaker_len/2 + self.ball_rad))){
+                //_=my;
                 self.ball_cen.y = my;
-                self.ball_vel.y = -self.ball_vel.y;
+                //self.ball_vel.y = -self.ball_vel.y;
                 //Distort the velocity direction according to % of breaker point
                 const frac = 35 * (self.ball_cen.x - self.breaker_pos.x)/(self.breaker_len/2);
                 const ref_norm = (Vec2{.x = 0, .y = -1.0}).rotate(frac);
                 const ref_perp = (Vec2{.x = 1, .y = 0}).rotate(frac);
 
-                self.ball_vel = add(ref_norm.scale(dot(ref_norm, self.ball_vel)),
-                                    ref_perp.scale(-dot(ref_perp, self.ball_vel)));
+                self.ball_vel = add(ref_norm.scale(-dot(ref_norm, self.ball_vel)),
+                                    ref_perp.scale(dot(ref_perp, self.ball_vel)));
 
                 // self.ball_vel = add(self.ball_vel.sx_(),
                 //                     self.ball_vel.s_y().rotate(frac));
