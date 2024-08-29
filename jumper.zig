@@ -76,17 +76,37 @@ pub fn add(a: Vec2, b: Vec2) Vec2{
     return Vec2{.x = a.x + b.x,
                 .y = a.y + b.y};
 }
+pub fn sub(a: Vec2, b: Vec2) Vec2{
+    return Vec2{.x = a.x - b.x,
+                .y = a.y - b.y};
+}
 pub fn dot(a: Vec2, b: Vec2) f32{
     return a.x * b.x + a.y * b.y;
 }
 const Context = struct{
+    const brad = 15;
+    const max_items = 4;
+    const v_gap_factor = 7;
+    const h_gap_factor = 10;//h gap factor = 1 diameter * some constant
+    const pipe_wid = 1;
+    const init_offset = 10;
+
     inst: *Instance = undefined,
 
     event:JumperEvents=.{},
 
     bpos:Vec2 = Vec2{.x = 100, .y = 400},
     bvel:f32 = 0.0,
-    const brad = 15;
+
+    //x : how much offset from up, y : how much vertical gap
+    items:[max_items] Vec2 = blk:{
+        const tmp=[max_items] Vec2{.{.x = -2, .y = 1}, .{.x = -1, .y = 1}, .{.x = 0, .y = 1}, .{.x = 1, .y = 1}};
+        break :blk tmp;
+    },
+    curr_offset:f32 = 0, // In multiples of bird diameter, towards -ve direction
+    // as curr_offset increases , the poles come towards the bird
+    first_elem:u32 = 0,
+    
     pub fn init(inst: *Instance) !@This(){
         var self=@This(){};
         self.inst = inst;
@@ -102,6 +122,7 @@ const Context = struct{
     pub fn deinit(self: *@This()) void{
         _=self;
     }
+    
     pub fn key_event(self: *@This(), key_name:[] const u8) void{
         self.event.key_event(key_name);
     }
@@ -110,11 +131,51 @@ const Context = struct{
         return self.event.touch_event(evt_name, id,
                                       px, py);
     }
+    fn draw_nth_item(self: * const @This(), n: u32) void{
+        const inx = (n + self.first_elem) % @This().max_items;
+        log("Drawing : n = {} inx = {} \n", .{n, inx});
+        const xoff = @as(f32, @floatFromInt(@This().brad * 2)) *
+            (@as(f32, @floatFromInt(n * @This().h_gap_factor)) -
+                 self.curr_offset + init_offset);
+        // off = x coordinate of center of pipes
+        const yoff = @as(f32, @floatFromInt(self.inst.h)) * 0.5 +
+            self.items[inx].x * 2 * @This().brad;
+        const ygap = self.items[inx].y * @This().brad * @This().v_gap_factor;
+
+        const pipe = @This().pipe_wid * @This().brad * 2;
+        
+        const left = xoff - pipe/2;
+        //const right = xoff + pipe/2;
+
+        const gapup = yoff - ygap;
+        const gapdown = yoff + ygap;
+
+        //Draw rectangle everywhere except this
+        const uppos = Vec2{.x = left, .y = 0};
+        const upsize = Vec2{.x = pipe, .y = gapup};
+
+        const downpos = Vec2{.x = left, .y = gapdown};
+        const downsize = Vec2{.x = pipe, .y = @as(f32, @floatFromInt(self.inst.h)) - gapdown};
+
+        JS.fill_rect(@intFromFloat(uppos.x), @intFromFloat(uppos.y),
+                     @intFromFloat(upsize.x), @intFromFloat(upsize.y));
+        JS.fill_rect(@intFromFloat(downpos.x), @intFromFloat(downpos.y),
+                     @intFromFloat(downsize.x), @intFromFloat(downsize.y));
+    }
+
     pub fn loop(self: *@This()) void{
         //Update
         const max_vel = 8;
         const grav = 0.32;
 
+        self.curr_offset += 0.05;
+
+        if(self.curr_offset > @This().h_gap_factor ){
+            self.curr_offset = 0;
+            // self.first_elem = (@This().max_items + self.first_elem - 1) % @This().max_items;
+            self.first_elem = (1 + self.first_elem) % @This().max_items;
+            log("Just got curr offset more, first_elem = {} \n", .{self.first_elem});
+        }
 
         //log("Last touch val = {d}\n", .{tch});
         if(self.event.touch_dur)|tch|{
@@ -152,6 +213,10 @@ const Context = struct{
         //Draw
         JS.clear_rect(0, 0, self.inst.w, self.inst.h);
 
+        for(self.items, 0..)|_,i|{
+            self.draw_nth_item(i);
+        }
+        
         JS.set_fill_style(ZigStr.init("#00ff00"));
         JS.fill_circle(@intFromFloat(self.bpos.x),
                        @intFromFloat(self.bpos.y),
