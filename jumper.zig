@@ -46,6 +46,13 @@ pub fn log(comptime format:[] const u8,
            args: anytype) void{
     glob.log_buff.writer().print(format, args) catch {};
 }
+
+fn is_betn(val: f32, pad: f32, low: f32, high: f32) bool{
+    if(low > high)
+        return is_betn(val, pad, high, low);
+    return ((val-pad) <= high) and
+        ((val+pad) >= low);
+}
 const Vec2 = struct{
     x: f32,
     y: f32,
@@ -86,7 +93,7 @@ pub fn dot(a: Vec2, b: Vec2) f32{
 const Context = struct{
     const brad = 15;
     const max_items = 4;
-    const v_gap_factor = 7;
+    const v_gap_factor = 5;
     const h_gap_factor = 10;//h gap factor = 1 diameter * some constant
     const pipe_wid = 1;
     const init_offset = 10;
@@ -98,6 +105,10 @@ const Context = struct{
     bpos:Vec2 = Vec2{.x = 100, .y = 400},
     bvel:f32 = 0.0,
 
+    last_hit:f32 = 1000.0,
+    hit_count:u32 = 0,
+    all_count:u32 = 0,
+    
     //x : how much offset from up, y : how much vertical gap
     items:[max_items] Vec2 = blk:{
         const tmp=[max_items] Vec2{.{.x = -2, .y = 1}, .{.x = -1, .y = 1}, .{.x = 0, .y = 1}, .{.x = 1, .y = 1}};
@@ -133,13 +144,12 @@ const Context = struct{
     }
     fn draw_nth_item(self: * const @This(), n: u32) void{
         const inx = (n + self.first_elem) % @This().max_items;
-        log("Drawing : n = {} inx = {} \n", .{n, inx});
         const xoff = @as(f32, @floatFromInt(@This().brad * 2)) *
             (@as(f32, @floatFromInt(n * @This().h_gap_factor)) -
                  self.curr_offset + init_offset);
         // off = x coordinate of center of pipes
         const yoff = @as(f32, @floatFromInt(self.inst.h)) * 0.5 +
-            self.items[inx].x * 2 * @This().brad;
+            self.items[inx].x * 2 * @This().brad ;
         const ygap = self.items[inx].y * @This().brad * @This().v_gap_factor;
 
         const pipe = @This().pipe_wid * @This().brad * 2;
@@ -174,7 +184,7 @@ const Context = struct{
             self.curr_offset = 0;
             // self.first_elem = (@This().max_items + self.first_elem - 1) % @This().max_items;
             self.first_elem = (1 + self.first_elem) % @This().max_items;
-            log("Just got curr offset more, first_elem = {} \n", .{self.first_elem});
+            self.all_count += 1;
         }
 
         //log("Last touch val = {d}\n", .{tch});
@@ -208,10 +218,39 @@ const Context = struct{
         if(self.bpos.y > @as(f32, @floatFromInt(self.inst.h - Context.brad))){
             self.bpos.y = @floatFromInt(self.inst.h - Context.brad);
         }
-        glob.flush_log();
         
+        self.last_hit += 0.1;
+
+        //Test against hitting
+        //(init off - curr off) * diameter is the position of first pipe
+        {
+            const cen = (init_offset - self.curr_offset) *
+                @as(f32, @floatFromInt(brad * 2));
+            const pipe = pipe_wid * brad * 2;
+            if(is_betn(self.bpos.x, brad, cen - pipe/2, cen + pipe/2)){
+                const yoff = @as(f32, @floatFromInt(self.inst.h)) * 0.5 +
+                    self.items[self.first_elem].x * 2 * brad;
+                const ygap = self.items[self.first_elem].y * brad * v_gap_factor;
+                if(!is_betn(self.bpos.y, 0, yoff-ygap+brad, yoff+ygap-brad)){
+                    // log("bpos = ({d}, {d}), brad = {d} " ++
+                    //         "yoff = {d}, ygap = {d}\n",
+                    //     .{self.bpos.x, self.bpos.y, brad, yoff, ygap});
+                    if(self.last_hit >= 3)
+                        self.hit_count += 1;
+                    self.last_hit = 0;
+                }
+            }
+        }
+
+
         //Draw
         JS.clear_rect(0, 0, self.inst.w, self.inst.h);
+
+        if(self.last_hit < 3){
+            JS.set_fill_style(ZigStr.init("#ff0000"));
+            JS.fill_rect(0,0, self.inst.w, self.inst.h);
+            JS.set_fill_style(ZigStr.init("#000000"));
+        }
 
         for(self.items, 0..)|_,i|{
             self.draw_nth_item(i);
@@ -228,7 +267,12 @@ const Context = struct{
         JS.stroke_text(ZigStr.init("This is"), @divFloor(self.inst.w, 2) - 60, @divFloor(self.inst.h, 2));
         JS.stroke_text(ZigStr.init("The"), @divFloor(self.inst.w, 2)-20, @divFloor(self.inst.h, 2) + 40);
         JS.stroke_text(ZigStr.init("Jumping Game"), @divFloor(self.inst.w, 2)-125, @divFloor(self.inst.h, 2) + 80);
+        JS.set_font(ZigStr.init("20px serif"));
+        if(glob.tmp_print("{}/{}", .{self.hit_count, self.all_count}))|hitstr|{
+            JS.stroke_text(ZigStr.init(hitstr), 30, 30);
+        }
 
+        glob.flush_log();
     }
 };
 

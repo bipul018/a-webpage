@@ -103,6 +103,12 @@ pub fn Instance(T: anytype) type{
             self.tmp_str.resize(size+1) catch return null;
             return self.tmp_str.items.ptr;
         }
+        pub fn tmp_print(self: *@This(), comptime format: [] const u8,
+                         args: anytype) ?[] const u8{
+            self.tmp_str.resize(0) catch return null;
+            _=self.tmp_str.writer().print(format, args) catch return null;
+            return self.tmp_str.items;
+        }
         pub fn resize_event(self: *@This(), neww2: u32, newh2: u32) void{
             const newh = @divFloor(newh2 * 9, 10); //Leave off 10% from bottom
             const neww = @divFloor(neww2 * 95,100); //Leave off some on the right side
