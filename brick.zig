@@ -420,30 +420,9 @@ const BoardEvents = struct{
 
     pub fn touch_event(self: *@This(), evt_name: [] const u8,
                        id: u32, px: i32, py: i32) bool{
+        _=evt_name;
         self.last_touch = id;
         self.touch_pos = Pos{.x=px,.y=py};
-        //glob.log_buff.writer().print("Touch event : {} {} \n", .{px, py}) catch {};
-        if(std.mem.eql(u8, evt_name, "touchstart")){
-            // if(null == self.last_touch){
-            //     self.last_touch = id;
-            //     self.touch_pos = Pos{.x=px,.y=py};
-            // }
-        }
-        if(std.mem.eql(u8, evt_name, "touchend")){
-            if(id == self.last_touch){
-                // const dp = Pos{.x = @intCast(@abs(px - self.touch_pos.x)),
-                //                .y = @intCast(@abs(py - self.touch_pos.y))};
-                // const touchr = 50;
-                // if((dp.x >= dp.y) and (dp.x > touchr)){
-                //     self.key_event(if(px > self.touch_pos.x) "ArrowRight" else "ArrowLeft");
-                // }
-                // if((dp.y >= dp.x) and (dp.y > touchr)){
-                //     self.key_event(if(py > self.touch_pos.y) "ArrowDown" else "ArrowUp");
-                // }
-                self.last_touch = null;
-            }
-
-        }
         glob.flush_log();
         return false;
     }

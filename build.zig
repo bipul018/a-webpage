@@ -41,6 +41,15 @@ pub fn build(b: *std.Build) void {
         .optimize = .ReleaseSmall,
     });
     setup_wasm_build(b, brick);
+    
+    const jumper = b.addExecutable(.{
+        .name = "jumper",
+        .root_source_file = b.path("jumper.zig"),
+        //.root_source_file = .{. path="jumper.zig"},
+        .target = wasm_target,
+        .optimize = .ReleaseSmall,
+    });
+    setup_wasm_build(b, jumper);
 
     const vsrust = b.addExecutable(.{
         .name = "vsrust",
@@ -53,4 +62,5 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(vsrust);
     b.installArtifact(snake);
     b.installArtifact(brick);
+    b.installArtifact(jumper);
 }

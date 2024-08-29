@@ -8,6 +8,8 @@
   <body>
     <button id="load_snake"> Snake Game </button>
     <button id="load_bricks"> Bricks Game </button>
+    <button id="load_jumper"> Jumping Game </button>
+    <br/>
     <canvas id="da-canvas" width="400" height="400"></canvas>
     <script src = "mouse-touch.js"> </script>
     <script>
@@ -175,20 +177,21 @@
 
 	  draw();
       }
-      
-      // load_game("brick.wasm").then(()=>{
-      // });
 
-      reload = "brick.wasm";
+      reload = "jumper.wasm";
       load_game().then(()=>{
-      document.getElementById("load_snake").
-      addEventListener("click", (e) => {
-      reload = "snake.wasm";
-      });
-      document.getElementById("load_bricks").
-      addEventListener("click", (e) => {
-      reload = "brick.wasm";
-      });
+	  document.getElementById("load_snake").
+	      addEventListener("click", (e) => {
+		  reload = "snake.wasm";
+	      });
+	  document.getElementById("load_bricks").
+	      addEventListener("click", (e) => {
+		  reload = "brick.wasm";
+	      });
+	  document.getElementById("load_jumper").
+	      addEventListener("click", (e) => {
+		  reload = "jumper.wasm";
+	      });
       });
       
     </script>
