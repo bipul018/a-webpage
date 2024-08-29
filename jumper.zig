@@ -193,7 +193,7 @@ const Context = struct{
                 if(tch > 2){
                     //self.bvel.y -= math.pow(f32, 50, -tch);
                     //self.bpos.y -= 50;
-                    self.bvel = -10;
+                    self.bvel = -9;
                     self.event.touch_dur = null;
                 }
                 else{
@@ -268,6 +268,11 @@ const Context = struct{
         JS.stroke_text(ZigStr.init("The"), @divFloor(self.inst.w, 2)-20, @divFloor(self.inst.h, 2) + 40);
         JS.stroke_text(ZigStr.init("Jumping Game"), @divFloor(self.inst.w, 2)-125, @divFloor(self.inst.h, 2) + 80);
         JS.set_font(ZigStr.init("20px serif"));
+        var score:f32 = @floatFromInt(self.all_count - self.hit_count);
+        score /= @floatFromInt(self.all_count);
+        if(self.all_count == 0)
+            score = 0;
+                                     
         if(glob.tmp_print("{}/{}", .{self.all_count - self.hit_count, self.all_count}))|hitstr|{
             JS.stroke_text(ZigStr.init(hitstr), 30, 30);
         }

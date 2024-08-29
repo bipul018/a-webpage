@@ -25,6 +25,7 @@
 	  initial: 20 /* pages */,
 	  //maximum: 100 /* pages */,
       });
+      var loaded_things = {};
       async function load_game(){
 
 	  function from_zig_str(zig_str){
@@ -47,8 +48,12 @@
 	  
 	  
 	  async function reload_game(the_game_name){
-	      const {instance} = await WebAssembly.instantiateStreaming(
-		  fetch(the_game_name),
+	      if(undefined === loaded_things[the_game_name]){
+		  loaded_things[the_game_name] = await (await fetch(the_game_name)).arrayBuffer();
+	      }
+	      const {instance} = await WebAssembly.instantiate(
+		  //fetch(the_game_name),
+		  loaded_things[the_game_name],
 		  {
 		      "env":{
 			  "memory": wasm_memory,
@@ -59,7 +64,7 @@
 			  },
 			  "log_str":function(str){
 			      console.log(from_zig_str(str));
-      },
+			  },
 			  "resize_canvas":function(width, height){
 			      c.width = width;
 			      c.height = height;
@@ -85,7 +90,7 @@
 			      ctx.fill();
 			  },
 			  "stroke_rect":function(px,py,w,h){
-      ctx.strokeRect(px, py, w, h);
+			      ctx.strokeRect(px, py, w, h);
 			  },
 			  "clear_rect":function(px, py, w, h){
 			      ctx.clearRect(px, py, w, h);
@@ -108,7 +113,7 @@
 
 	  //console.log("cxt value " + cxt);
 	  function to_c_str(str){
-      const cstr = winst.exports.get_tmp_str(w_cxt, str.length);
+	      const cstr = winst.exports.get_tmp_str(w_cxt, str.length);
 	      if(str != 0){
 		  const view = new Uint8Array(
 		      wasm_memory.buffer,
@@ -127,7 +132,7 @@
 		  return;
 	      }
 	      winst.exports.key_event(w_cxt, to_c_str(event.code));
-      
+	      
 	      // do something
 	  });
 	  window.addEventListener("resize", (event) => {
@@ -143,11 +148,11 @@
 	      else
 		  winst.exports.touch_event(w_cxt, to_c_str(event.action),
 					    (event.id%100), event.pos[0], event.pos[1]);
-	      return true;
+      return true;
 	  }
 
 	  const pointer_handle = create_touch_and_mouse_events(c, send_touch_evt);
-	  	  
+	  
 	  function draw(){
 	      
 	      if(reload != null){
@@ -155,7 +160,7 @@
 		      winst.exports.deinit(w_cxt);
 		  }
 		  // c.removeEventListener("touchmove");
-      // c.removeEventListener("touchcancel");
+		  // c.removeEventListener("touchcancel");
 		  // document.removeEventListener("keydown");
 		  // window.removeEventListener("resize");
 		  // c.removeEventListener("touchstart");
@@ -180,7 +185,7 @@
 
       reload = "jumper.wasm";
       load_game().then(()=>{
-	  document.getElementById("load_snake").
+      document.getElementById("load_snake").
 	      addEventListener("click", (e) => {
 		  reload = "snake.wasm";
 	      });
