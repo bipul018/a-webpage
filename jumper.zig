@@ -91,7 +91,7 @@ pub fn dot(a: Vec2, b: Vec2) f32{
     return a.x * b.x + a.y * b.y;
 }
 const Context = struct{
-    const brad = 15;
+    const brad = 13;
     const max_items = 4;
     const v_gap_factor = 5;
     const h_gap_factor = 10;//h gap factor = 1 diameter * some constant
@@ -106,12 +106,12 @@ const Context = struct{
     bvel:f32 = 0.0,
 
     last_hit:f32 = 1000.0,
-    hit_count:u32 = 0,
-    all_count:u32 = 0,
+    hit_count:i32 = 0,
+    all_count:i32 = 0,
     
     //x : how much offset from up, y : how much vertical gap
     items:[max_items] Vec2 = blk:{
-        const tmp=[max_items] Vec2{.{.x = -2, .y = 1}, .{.x = -1, .y = 1}, .{.x = 0, .y = 1}, .{.x = 1, .y = 1}};
+        const tmp=[max_items] Vec2{.{.x = -2, .y = 1.4}, .{.x = -1, .y = 1.4}, .{.x = 0, .y = 1.4}, .{.x = 1, .y = 1.4}};
         break :blk tmp;
     },
     curr_offset:f32 = 0, // In multiples of bird diameter, towards -ve direction
@@ -268,7 +268,7 @@ const Context = struct{
         JS.stroke_text(ZigStr.init("The"), @divFloor(self.inst.w, 2)-20, @divFloor(self.inst.h, 2) + 40);
         JS.stroke_text(ZigStr.init("Jumping Game"), @divFloor(self.inst.w, 2)-125, @divFloor(self.inst.h, 2) + 80);
         JS.set_font(ZigStr.init("20px serif"));
-        if(glob.tmp_print("{}/{}", .{self.hit_count, self.all_count}))|hitstr|{
+        if(glob.tmp_print("{}/{}", .{self.all_count - self.hit_count, self.all_count}))|hitstr|{
             JS.stroke_text(ZigStr.init(hitstr), 30, 30);
         }
 
