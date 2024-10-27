@@ -3,3 +3,5 @@ zig-out/*
 *.obj
 .*/*
 *.lib
+*.*~
+zig-cache/*
