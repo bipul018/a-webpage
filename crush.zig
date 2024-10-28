@@ -99,7 +99,11 @@ const Context = struct{
         glob = inst;
         
         self.clear_grid();
-        _=self.make_all_fall();
+        while(true){
+            _=self.make_all_fall();
+            const c = self.clear_3s();
+            if(c == 0) break;
+        }
         self.inst.log_buff.clearRetainingCapacity();
         return self;   
     }
@@ -307,7 +311,7 @@ const Context = struct{
         {
 
             // Select if cell is highlighted
-            const mpos_inx = self.revev(pos_to_vec2(self.event.touch_pos)) /
+            const mpos_inx = self.revev(pos_to_vec2(self.event.hover_pos)) /
                 @as(Vec2, @splat(box_size));
             if (@reduce(.And, mpos_inx >= Vec2{0.0,0.0}) and
                     @reduce(.And, mpos_inx < @as(Vec2, @splat(@floatFromInt(gcnt)))))
@@ -350,14 +354,13 @@ const Context = struct{
                     _=self.make_all_fall();
             //}
             }
-            //while(self.make_all_fall()){
+            //while(self.make_all_fall()){ 
             while(true){
                 const c = self.clear_3s();
-                if(c == 0) break;
                 self.score += @intCast(c);
                 if(c > 3) self.score += 2;
                 if(c > 4) self.score += 2;
-                _=self.make_all_fall();
+                if(!self.make_all_fall() and (c == 0)) break;
             }
         }
 
@@ -386,8 +389,8 @@ const Context = struct{
                                          @intFromFloat(self.convf(box_size)));
                         }
                     }
-                    if (@reduce(.And, pos_to_vec2(self.event.touch_pos) >= gbase) and
-                            @reduce(.And, pos_to_vec2(self.event.touch_pos) <= (gbase+@as(Vec2, @splat(self.convf(box_size)))))){
+                    if (@reduce(.And, pos_to_vec2(self.event.hover_pos) >= gbase) and
+                            @reduce(.And, pos_to_vec2(self.event.hover_pos) <= (gbase+@as(Vec2, @splat(self.convf(box_size)))))){
 
                     }
                     const gpos = basepos + @as(Vec2, @splat(pad+rad));
@@ -402,7 +405,7 @@ const Context = struct{
         set_font(ZigStr.init("bold 30px serif"));
         // stroke_text(ZigStr.init("Welcome"), @divFloor(self.inst.w, 2) - 60, @divFloor(self.inst.h, 2));
         // stroke_text(ZigStr.init("To"), @divFloor(self.inst.w, 2)-20, @divFloor(self.inst.h, 2) + 40);
-        stroke_text(ZigStr.init("The Crushing Game"), @divFloor(self.inst.w, 2)-125, @divFloor(self.inst.h, 2) + 200);
+        stroke_text(ZigStr.init("Match N Crush"), @divFloor(self.inst.w, 2)-125, @divFloor(self.inst.h, 2) + 200);
         if(self.inst.tmp_print("Score = {}", .{self.score}))|str|{
         stroke_text(ZigStr.init(str), 125, @divFloor(self.inst.h, 2) + 300);            
         }
@@ -428,6 +431,11 @@ const CrushEvents = struct{
 
     touch_pos:Pos=.{0,0},
     last_touch: ?u32 = null,
+
+    //Latest hover id
+    hover_id: ?u32 = null,
+    hover_pos: Pos = .{0,0},
+
 
     pub fn reset_events(self: *@This()) void{
         self.down = false; self.right = false;
@@ -463,13 +471,19 @@ const CrushEvents = struct{
     pub fn touch_event(self: *@This(), evt_name: [] const u8,
                        id: u32, px: i32, py: i32) bool{
         //if(std.mem.eql(u8, evt_name, "enter")){
-        if(!std.mem.eql(u8, evt_name, "leave")){
+        if(std.mem.eql(u8, evt_name, "enter")){
             //if(null == self.last_touch){
                 self.last_touch = id;
                 self.touch_pos = Pos{px,py};
             //}
             //glob.log_buff.writer().print("Enter event at {} {}\n", .{px, py}) catch {};
-
+        }
+        if(!std.mem.eql(u8, evt_name, "leave")){
+            //if(null == self.last_touch){
+            self.hover_id = id;
+            self.hover_pos = Pos{px,py};
+            //}
+            //glob.log_buff.writer().print("Enter event at {} {}\n", .{px, py}) catch {};
         }
         if(std.mem.eql(u8, evt_name, "leave")){
             //glob.log_buff.writer().print("Leave event del {} {} \n", .{
@@ -485,6 +499,9 @@ const CrushEvents = struct{
                     self.key_event(if(py > self.touch_pos[1]) "ArrowDown" else "ArrowUp");
                 }
                 self.last_touch = null;
+            }
+            if((null != self.hover_id) and (id == self.hover_id.?)){
+                self.hover_id = null;
             }
         }
         glob.flush_log();
