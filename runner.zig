@@ -88,6 +88,7 @@ const Context = struct {
         go_left,
         jumping,
     } = .none, // One of the four possible actions that a player can take at a time, including 'no action'
+    action_tl: u32 = 0,
     event: RunnerEvents = .{},
 
     pub fn init(inst: *Instance) !@This() {
@@ -133,21 +134,69 @@ const Context = struct {
         //Set update rate
         self.wait = 23;
         //Update
-        if (self.event.down) {
-            self.dir = .{ .ud = .d };
-        }
-        if (self.event.up) {
-            self.dir = .{ .ud = .u };
-        }
-        if (self.event.left) {
-            self.dir = .{ .rl = .l };
-        }
-        if (self.event.right) {
-            self.dir = .{ .rl = .r };
+
+        // Initiate the action 
+        const total_action_time = 20;
+        if ((self.action == .none) and (self.action_tl == 0)){
+            if (self.event.down) { self.action = .rolling; }
+            if (self.event.up) { self.action = .jumping; }
+            if (self.event.right) { self.action = .go_right; }
+            if (self.event.left) {self.action = .go_left; }
+            if (self.action != .none){
+                self.action_tl = total_action_time;
+            }
         }
         self.event.reset_events();
 
-        // Write the logic that moves around the player and Perform collision detection
+        // Logic that controls the transition of action (no collision detection yet)
+        if(self.action_tl > 0){
+            self.action_tl -= 1;
+        } else {
+            self.action_tl = 0;
+            self.action = .none;
+        }
+            
+        var did_it_collide = false;
+        // Write the logic that moves around the player
+        if(self.action_tl == total_action_time){
+            if(self.action == .go_right){
+                switch(self.lane){
+                    .left => {self.lane = .middle;},
+                    .middle => {self.lane = .right;},
+                    .right => {did_it_collide = true; self.action = .none;},
+                }
+            }
+            if(self.action == .go_left){
+                switch(self.lane){
+                    .right => {self.lane = .middle;}
+                    .middle => {self.lane = .left;},
+                    .left => {did_it_collide = true; self.action = .none},
+                }
+            }
+        }
+
+        //Perform collision detection
+
+        // Collison happens if some obstacle is imminent, and the player is there in the same lane and is not skipping
+        if ((self.obstacles.items.len > 0) and (self.obstacles.items[0].after == 0)){
+            const obst = self.obstacles.items[0];
+            if((obst.lane == self.lane) and 
+               ((obst.kind == .nopass) or 
+                ((obst.kind == .underpass) and (self.action != .rolling)) or
+                ((obst.kind == .overpass) and (self.action != .jumping)))){
+                // Collision has happened
+                did_it_collide = true;
+            } else {
+                self.score += 1;
+            }
+            // Now remove that obstacle from the list
+            _=self.obstacles.orderedRemove(0);
+        }
+        if(did_it_collide){ self.score -= 1; } 
+        // Now decrement the 'after' of each obstacle by 1
+        for(&self.obstacles.items)|*obs|{
+            obs.after -= 1;
+        }
 
         // Spawn the obstacles
 
