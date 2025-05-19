@@ -80,6 +80,7 @@ const Context = struct {
     wait: u32 = 0,
     score: i32 = 0,
     obstacles: std.ArrayList(Obstacle) = undefined,
+    spawn_to: u32 = 45, // This is the initial delay of spawning
     lane: Lane = .middle, // These represent the three possible places the character can be in
     action: enum {
         none,
@@ -199,6 +200,12 @@ const Context = struct {
         }
 
         // Spawn the obstacles
+        if(self.spawn_to <= 0){
+            self.generate_obstacle(40);
+            // Later, keep decreasing this spawn time window to increase the difficulty
+            self.spawn_to = self.inst.prng.random().uintAtMost(u32, 40) + 5;
+        }
+        self.spawn_to -= 1;
 
         //Draw
         clear_rect(0, 0, self.inst.w, self.inst.h);
@@ -215,6 +222,12 @@ const Context = struct {
         stroke_text(ZigStr.init("Welcome"), @divFloor(self.inst.w, 2) - 60, @divFloor(self.inst.h, 2));
         stroke_text(ZigStr.init("To"), @divFloor(self.inst.w, 2) - 20, @divFloor(self.inst.h, 2) + 40);
         stroke_text(ZigStr.init("The Running Game"), @divFloor(self.inst.w, 2) - 125, @divFloor(self.inst.h, 2) + 80);
+
+        // Draw the score
+        JS.set_font(ZigStr.init("20px serif"));
+        if(glob.tmp_print("{}", .{self.score}))|scorestr|{
+            JS.stroke_text(ZigStr.init(scorestr), 30, 30);
+        }
     }
 };
 
