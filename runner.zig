@@ -64,8 +64,15 @@ const nw = 17;
 const nh = 17;
 var glob: *Instance = undefined;
 const action_frame_count = 50; // The number of frames a single action runs
+const Lane = enum {
+    middle,
+    left,
+    right,
+};
+const ObstacleKind = enum { overpass, underpass, nopass };
 const Obstacle = struct {
-    kind: enum { overpass, underpass, nopass },
+    kind: ObstacleKind,
+    lane: Lane,
     after: u32,
 };
 const Context = struct {
@@ -73,11 +80,7 @@ const Context = struct {
     wait: u32 = 0,
     score: i32 = 0,
     obstacles: std.ArrayList(Obstacle) = undefined,
-    lane: enum {
-        middle,
-        left,
-        right,
-    } = .middle, // These represent the three possible places the character can be in
+    lane: Lane = .middle, // These represent the three possible places the character can be in
     action: enum {
         none,
         rolling,
@@ -107,6 +110,21 @@ const Context = struct {
     pub fn touch_event(self: *@This(), evt_name: []const u8, id: u32, px: i32, py: i32) bool {
         return self.event.touch_event(evt_name, id, px, py);
     }
+    fn generate_obstacle(self: *@This(), max_late: u32) !void {
+        // Always generate obstacle after the last occuring obstacle
+        // The list will have obstacles in incoming order
+        const min_time = blk: {
+            if (self.obstacles.getLastOrNull()) |o| {
+                break :blk o.after;
+            } else {
+                break :blk 5;
+            }
+        };
+        const new_time = self.inst.prng.random().uintAtMost(u32, max_late) + min_time;
+        const new_lane = self.inst.prng.random().enumValue(Lane);
+        const obs_type = self.inst.prng.random().enumValue(ObstacleKind);
+        try self.obstacles.append(.{ .kind = obs_type, .lane = new_lane, .after = new_time });
+    }
     pub fn loop(self: *@This()) void {
         if (self.wait > 0) {
             self.wait -= 1;
@@ -129,7 +147,9 @@ const Context = struct {
         }
         self.event.reset_events();
 
-        // Write the logic that moves around the player
+        // Write the logic that moves around the player and Perform collision detection
+
+        // Spawn the obstacles
 
         //Draw
         clear_rect(0, 0, self.inst.w, self.inst.h);
